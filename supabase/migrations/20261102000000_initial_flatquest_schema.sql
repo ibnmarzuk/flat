@@ -150,3 +150,22 @@ on conflict (slug) do update set
   is_published = excluded.is_published,
   sort_order = excluded.sort_order,
   updated_at = now();
+
+insert into public.quest_steps (quest_id, title, instructions, resource_url, sort_order)
+select q.id, step.title, step.instructions, step.resource_url, step.sort_order
+from public.quests q
+join (values
+  ('connect-wallet', 'Open your wallet', 'Use a browser wallet you control. Never share your recovery phrase or private key.', null::text, 1),
+  ('connect-wallet', 'Connect to FlatQuest', 'Approve the connection request in your wallet. Connecting does not give FlatQuest permission to move funds.', null::text, 2),
+  ('robinhood-testnet', 'Review the network', 'Robinhood Chain testnet uses chain ID 46630 and ETH for gas. Testnet assets are not mainnet funds.', 'https://docs.robinhood.com/chain/', 1),
+  ('robinhood-testnet', 'Switch your wallet network', 'Use the quest action to add or switch to Robinhood Chain testnet. Confirm the chain ID in your wallet.', 'https://docs.robinhood.com/chain/connecting/', 2),
+  ('prove-transaction', 'Complete a testnet transaction', 'Use a trusted testnet application or faucet. Do not send funds to an address supplied by an unknown person.', 'https://explorer.testnet.chain.robinhood.com/', 1),
+  ('prove-transaction', 'Submit the transaction hash', 'Paste the transaction hash. FlatQuest checks that the receipt succeeded, the sender matches your connected wallet, and the transaction has at least two confirmations.', null::text, 2),
+  ('explore-ecosystem', 'Explore World Is Flat', 'Read about the ecosystem and identify a project, tool or resource that is useful to you.', 'https://worldisflat.fun/', 1),
+  ('explore-ecosystem', 'Reflect on what you found', 'Record what you explored. This is a self-reported learning milestone, not an onchain verification.', null::text, 2)
+) as step(quest_slug, title, instructions, resource_url, sort_order)
+  on q.slug = step.quest_slug
+on conflict (quest_id, sort_order) do update set
+  title = excluded.title,
+  instructions = excluded.instructions,
+  resource_url = excluded.resource_url;
