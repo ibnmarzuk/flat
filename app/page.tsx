@@ -6,7 +6,7 @@ declare global {
   interface Window { ethereum?: { request: (args: { method: string; params?: unknown[] }) => Promise<unknown>; on?: (event: string, cb: (...args: unknown[]) => void) => void; removeListener?: (event: string, cb: (...args: unknown[]) => void) => void } }
 }
 
-const CHAIN_ID = "0xB6E"; // Robinhood Chain testnet, 46630
+const CHAIN_ID = "0xB626"; // Robinhood Chain testnet, 46630
 const RPC = "https://rpc.testnet.chain.robinhood.com";
 const quests = [
   { id: 1, category: "Getting started", title: "Connect your wallet", description: "Bring your onchain identity into the journey. Your wallet stays in your control.", reward: "First step", type: "wallet" },
