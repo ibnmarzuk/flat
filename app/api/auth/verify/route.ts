@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   try {
     const db = getDb();
     const address = input.address.toLowerCase();
-    const challenges = await db<{ nonce: string; created_at: Date | string; expires_at: Date | string }[]>\`
+    const challenges = await db<{ nonce: string; created_at: Date | string; expires_at: Date | string }[]>`
       select nonce, created_at, expires_at
       from public.wallet_auth_challenges
       where wallet_address = ${address}
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
         and consumed_at is null
         and expires_at > now()
       limit 1
-    \`;
+    `;
     const challenge = challenges[0];
     if (!challenge) return NextResponse.json({ error: "This sign in request has expired or was already used. Try again." }, { status: 401 });
 
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
     const sessionExpiry = new Date(Date.now() + SESSION_SECONDS * 1000);
 
     await db.begin(async (tx) => {
-      const consumed = await tx\`
+      const consumed = await tx`
         update public.wallet_auth_challenges
         set consumed_at = now()
         where wallet_address = ${address}
@@ -73,25 +73,25 @@ export async function POST(request: Request) {
           and consumed_at is null
           and expires_at > now()
         returning wallet_address
-      \`;
+      `;
       if (consumed.length !== 1) throw new Error("Challenge already consumed.");
 
-      await tx\`
+      await tx`
         insert into public.profiles (wallet_address)
         values (${address})
         on conflict (wallet_address) do update set updated_at = now()
-      \`;
-      await tx\`
+      `;
+      await tx`
         insert into public.completions (wallet_address, quest_id, status, submitted_at, verified_at)
         select ${address}, id, 'verified', now(), now()
         from public.quests where slug = 'connect-wallet'
         on conflict (wallet_address, quest_id) do update
           set status = 'verified', verified_at = now(), updated_at = now()
-      \`;
-      await tx\`
+      `;
+      await tx`
         insert into public.wallet_sessions (token_hash, wallet_address, expires_at)
         values (${tokenHash}, ${address}, ${sessionExpiry.toISOString()})
-      \`;
+      `;
     });
 
     const response = NextResponse.json({
