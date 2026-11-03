@@ -10,11 +10,12 @@ declare global {
 
 const CHAIN_ID = "0xB626"; // Robinhood Chain testnet, 46630
 const RPC = "https://rpc.testnet.chain.robinhood.com";
-const quests = [
-  { id: 1, category: "Getting started", title: "Connect your wallet", description: "Bring your onchain identity into the journey. Your wallet stays in your control.", reward: "First step", type: "wallet" },
-  { id: 2, category: "Getting started", title: "Find your place on Robinhood Chain", description: "Switch to the Robinhood Chain testnet and get familiar with the network.", reward: "Network ready", type: "network" },
-  { id: 3, category: "Onchain proof", title: "Prove an onchain transaction", description: "Submit a transaction hash. FlatQuest checks the public receipt, submitted sender address and confirmations against the testnet.", reward: "Verified proof", type: "transaction" },
-  { id: 4, category: "Explore", title: "Explore the ecosystem", description: "Discover a project or useful resource in the World Is Flat ecosystem. Record what you explored.", reward: "Explorer", type: "explore" }
+type Quest = { id: number; slug: string; category: string; title: string; description: string; reward: string; type: string };
+const initialQuests: Quest[] = [
+  { id: 1, slug: "connect-wallet", category: "Getting started", title: "Connect your wallet", description: "Bring your onchain identity into the journey. Your wallet stays in your control.", reward: "First step", type: "wallet" },
+  { id: 2, slug: "robinhood-testnet", category: "Getting started", title: "Find your place on Robinhood Chain", description: "Switch to the Robinhood Chain testnet and get familiar with the network.", reward: "Network ready", type: "network" },
+  { id: 3, slug: "prove-transaction", category: "Onchain proof", title: "Prove an onchain transaction", description: "Submit a transaction hash. FlatQuest checks the public receipt, submitted sender address and confirmations against the testnet.", reward: "Verified proof", type: "transaction" },
+  { id: 4, slug: "explore-ecosystem", category: "Explore", title: "Explore the ecosystem", description: "Discover a project or useful resource in the World Is Flat ecosystem. Record what you explored.", reward: "Explorer", type: "explore" }
 ];
 
 function Mark({ small = false }: { small?: boolean }) {
@@ -22,6 +23,7 @@ function Mark({ small = false }: { small?: boolean }) {
 }
 
 export default function Home() {
+  const [quests, setQuests] = useState<Quest[]>(initialQuests);
   const [account, setAccount] = useState("");
   const [chainId, setChainId] = useState("");
   const [completed, setCompleted] = useState<number[]>([]);
@@ -33,6 +35,7 @@ export default function Home() {
   const [verificationEvidence, setVerificationEvidence] = useState<{ transactionHash: string; walletAddress: string; blockNumber: number; blockHash: string; transactionTo: string | null; transactionValue: string; inputDataBytes: number; confirmations: number; verifiedAt: string } | null>(null);
 
   useEffect(() => {
+    fetch("/api/quests").then((response) => response.ok ? response.json() : Promise.reject(new Error("Quest API unavailable"))).then((data: { quests?: Quest[] }) => { if (Array.isArray(data.quests) && data.quests.length) setQuests(data.quests); }).catch(() => {});
     try { const savedProgress = JSON.parse(localStorage.getItem("flatquest-progress") || "[]"); const safeProgress = Array.isArray(savedProgress) ? savedProgress.filter((id): id is number => Number.isInteger(id) && id >= 1 && id <= 4) : []; setCompleted(safeProgress); setExplored(safeProgress.includes(4)); const savedEvidence = localStorage.getItem("flatquest-verification-evidence"); if (savedEvidence) setVerificationEvidence(JSON.parse(savedEvidence)); } catch {}
     if (window.ethereum) {
       window.ethereum.request({ method: "eth_accounts" }).then((a) => { const list = a as string[]; if (list[0]) setAccount(list[0]); }).catch(() => {});
@@ -137,7 +140,7 @@ export default function Home() {
       </div>
       <div className="quest-list">
         <div className="quest-toolbar"><div><span className="eyebrow">THE QUEST BOARD</span><h3>Pick your path</h3></div><select value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Filter quests"><option>All quests</option><option>Getting started</option><option>Onchain proof</option><option>Explore</option></select></div>
-        {filtered.map((q) => <article className="quest-card" key={q.id}><div className="quest-card-top"><span className="quest-index">0{q.id}</span><span className="quest-category">{q.category}</span><span className={completed.includes(q.id) ? "status complete" : "status"}>{completed.includes(q.id) ? q.id === 3 && verificationEvidence ? "✓ Onchain verified" : "✓ Recorded locally" : "○ Available"}</span></div><h4>{q.title}</h4><p>{q.description}</p><Link className="quest-guide-link" href={`/quests/${["connect-wallet", "robinhood-testnet", "prove-transaction", "explore-ecosystem"][q.id - 1]}`}>Read quest guide ↗</Link>
+        {filtered.map((q) => <article className="quest-card" key={q.id}><div className="quest-card-top"><span className="quest-index">0{q.id}</span><span className="quest-category">{q.category}</span><span className={completed.includes(q.id) ? "status complete" : "status"}>{completed.includes(q.id) ? q.id === 3 && verificationEvidence ? "✓ Onchain verified" : "✓ Recorded locally" : "○ Available"}</span></div><h4>{q.title}</h4><p>{q.description}</p><Link className="quest-guide-link" href={`/quests/${q.slug}`}>Read quest guide ↗</Link>
           {q.type === "transaction" && <div className="verify-field"><input value={hash} onChange={(e) => setHash(e.target.value)} placeholder="Paste transaction hash (0x…)" aria-label="Transaction hash"/><button onClick={verifyTransaction} disabled={busy}>{busy ? "Checking..." : "Verify proof"}</button></div>}
           {q.type === "explore" && <div className="explore-action"><button onClick={() => { setExplored(!explored); if (!explored) { save(4); setNotice("Explorer milestone recorded on this device. This is not an onchain verification."); } }}>{explored ? "Explored ✓" : "I explored the ecosystem"}</button><a href="https://worldisflat.fun/" target="_blank" rel="noreferrer">Open World Is Flat ↗</a></div>}
           {q.type === "wallet" && <button className="quest-action" onClick={connect}>{account ? "Wallet connected ✓" : "Connect wallet ↗"}</button>}
