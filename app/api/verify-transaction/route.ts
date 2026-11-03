@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getConfirmationCount, hasConsistentTransactionEvidence } from "@/lib/transaction-verification";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -96,12 +97,7 @@ export async function POST(request: Request) {
     if (!receipt || !transaction) {
       return NextResponse.json({ error: "Transaction not found on Robinhood Chain testnet." }, { status: 404 });
     }
-    if (
-      receipt.transactionHash.toLowerCase() !== transactionHash.toLowerCase() ||
-      transaction.hash.toLowerCase() !== transactionHash.toLowerCase() ||
-      receipt.blockHash.toLowerCase() !== (transaction.blockHash || "").toLowerCase() ||
-      receipt.blockNumber.toLowerCase() !== (transaction.blockNumber || "").toLowerCase()
-    ) {
+    if (!hasConsistentTransactionEvidence(receipt, transaction, transactionHash)) {
       return NextResponse.json({ error: "The network returned inconsistent transaction evidence. Try again." }, { status: 503 });
     }
     if (receipt.status !== "0x1") {
@@ -113,13 +109,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "The transaction sender does not match your connected wallet." }, { status: 403 });
     }
 
-    const latestBlock = BigInt(latestBlockHex);
-    const includedBlock = BigInt(receipt.blockNumber);
-    if (latestBlock < includedBlock) {
-      return NextResponse.json({ error: "The network returned an inconsistent block height. Try again." }, { status: 503 });
+    const confirmationCount = getConfirmationCount(latestBlockHex, receipt.blockNumber);
+    if (confirmationCount === null || confirmationCount > BigInt(Number.MAX_SAFE_INTEGER)) {
+      return NextResponse.json({ error: "The network returned an invalid block height. Try again." }, { status: 503 });
     }
 
-    const confirmations = Number(latestBlock - includedBlock + 1n);
+    const includedBlock = BigInt(receipt.blockNumber);
+    const confirmations = Number(confirmationCount);
     if (confirmations < 2) {
       return NextResponse.json({
         error: "This transaction needs at least 2 confirmations. Try again shortly.",
