@@ -66,12 +66,28 @@ export async function POST(request: Request) {
         transactionHash: string;
         from: string;
       } | null>("eth_getTransactionReceipt", [transactionHash]),
-      rpc<{ from: string; hash: string } | null>("eth_getTransactionByHash", [transactionHash]),
+      rpc<{
+        from: string;
+        hash: string;
+        blockNumber: string | null;
+        blockHash: string | null;
+        to: string | null;
+        input: string;
+        value: string;
+      } | null>("eth_getTransactionByHash", [transactionHash]),
       rpc<string>("eth_blockNumber", []),
     ]);
 
     if (!receipt || !transaction) {
       return NextResponse.json({ error: "Transaction not found on Robinhood Chain testnet." }, { status: 404 });
+    }
+    if (
+      receipt.transactionHash.toLowerCase() !== transactionHash.toLowerCase() ||
+      transaction.hash.toLowerCase() !== transactionHash.toLowerCase() ||
+      receipt.blockHash.toLowerCase() !== (transaction.blockHash || "").toLowerCase() ||
+      receipt.blockNumber.toLowerCase() !== (transaction.blockNumber || "").toLowerCase()
+    ) {
+      return NextResponse.json({ error: "The network returned inconsistent transaction evidence. Try again." }, { status: 503 });
     }
     if (receipt.status !== "0x1") {
       return NextResponse.json({ error: "This transaction did not succeed." }, { status: 422 });
@@ -104,12 +120,14 @@ export async function POST(request: Request) {
       walletAddress,
       blockNumber: Number(includedBlock),
       blockHash: receipt.blockHash,
+      transactionTo: transaction.to,
+      transactionValue: transaction.value,
+      inputDataBytes: Math.max(0, (transaction.input.length - 2) / 2),
       confirmations,
-      verificationMethod: "successful_receipt_sender_match_two_confirmations",
+      verificationMethod: "successful_receipt_sender_match_two_confirmations_with_block_consistency",
       verifiedAt: new Date().toISOString(),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Verification service failed.";
-    return NextResponse.json({ error: message }, { status: 503 });
+    return NextResponse.json({ error: "The verification service or network provider is temporarily unavailable. Please try again." }, { status: 503 });
   }
 }
