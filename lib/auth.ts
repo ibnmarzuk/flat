@@ -29,7 +29,7 @@ export async function getAuthenticatedWallet(cookieHeader: string | null) {
   const rows = await db<{ wallet_address: string }[]>`
     select wallet_address
     from public.wallet_sessions
-    where token_hash = ${hashToken(decodeURIComponent(token))}
+    where token_hash = ${hashToken(token)}
       and revoked_at is null
       and expires_at > now()
     limit 1
