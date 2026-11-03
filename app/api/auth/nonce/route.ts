@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
 import { getDb } from "@/lib/db";
 import { buildWalletSignInMessage } from "@/lib/auth";
+import { consumeWalletRateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,6 +39,8 @@ export async function POST(request: Request) {
   });
 
   try {
+    const rate = await consumeWalletRateLimit("auth_nonce", address, 5, 600);
+    if (!rate.allowed) return NextResponse.json({ error: "Too many sign in requests. Try again later." }, { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds) } });
     const db = getDb();
     await db`
       insert into public.wallet_auth_challenges (wallet_address, nonce, created_at, expires_at)
