@@ -34,3 +34,24 @@ test("rejects a latest block lower than the included block", () => {
 test("rejects malformed block heights", () => {
   assert.equal(getConfirmationCount("not-hex", "0x10"), null);
 });
+
+test("matches transaction hashes without case sensitivity", () => {
+  const upperHash = hash.toUpperCase().replace("0X", "0x");
+  assert.equal(hasConsistentTransactionEvidence({ ...receipt, transactionHash: upperHash }, { ...transaction, hash: upperHash }, hash), true);
+});
+
+test("rejects a transaction from another block number", () => {
+  assert.equal(hasConsistentTransactionEvidence(receipt, { ...transaction, blockNumber: "0x11" }, hash), false);
+});
+
+test("rejects a malformed transaction hash in the receipt", () => {
+  assert.equal(hasConsistentTransactionEvidence({ ...receipt, transactionHash: "0x1234" }, transaction, hash), false);
+});
+
+test("returns one confirmation when latest and included blocks are equal", () => {
+  assert.equal(getConfirmationCount("0x10", "0x10"), 1n);
+});
+
+test("returns null for a block height with a leading zero", () => {
+  assert.equal(getConfirmationCount("0x010", "0x10"), null);
+});
