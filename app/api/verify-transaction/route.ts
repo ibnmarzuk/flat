@@ -29,9 +29,18 @@ async function rpc<T>(method: string, params: unknown[]): Promise<T> {
 }
 
 export async function POST(request: Request) {
+  const contentLength = Number(request.headers.get("content-length") || "0");
+  if (contentLength > 2_048) {
+    return NextResponse.json({ error: "Request body is too large." }, { status: 413 });
+  }
+
   let body: unknown;
   try {
-    body = await request.json();
+    const rawBody = await request.text();
+    if (rawBody.length > 2_048) {
+      return NextResponse.json({ error: "Request body is too large." }, { status: 413 });
+    }
+    body = JSON.parse(rawBody);
   } catch {
     return NextResponse.json({ error: "Send a valid JSON request." }, { status: 400 });
   }
