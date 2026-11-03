@@ -82,6 +82,13 @@ export async function POST(request: Request) {
         on conflict (wallet_address) do update set updated_at = now()
       \`;
       await tx\`
+        insert into public.completions (wallet_address, quest_id, status, submitted_at, verified_at)
+        select ${address}, id, 'verified', now(), now()
+        from public.quests where slug = 'connect-wallet'
+        on conflict (wallet_address, quest_id) do update
+          set status = 'verified', verified_at = now(), updated_at = now()
+      \`;
+      await tx\`
         insert into public.wallet_sessions (token_hash, wallet_address, expires_at)
         values (${tokenHash}, ${address}, ${sessionExpiry.toISOString()})
       \`;
