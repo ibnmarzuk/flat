@@ -9,3 +9,54 @@
 
 
 .evidence-card{margin-top:14px;background:#fff;border:1px solid #dce7cf;border-radius:9px;padding:18px 20px}.evidence-heading{display:flex;align-items:center;gap:11px}.evidence-badge{width:27px;height:27px;display:grid;place-items:center;background:#eaf4dc;color:#527a25;border-radius:50%;font-weight:800}.evidence-heading strong,.evidence-heading small{display:block}.evidence-heading strong{font-size:12px}.evidence-heading small{font:8px 'DM Mono',monospace;letter-spacing:.8px;color:#839077;margin-top:4px}.evidence-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0;padding:15px 0;border-top:1px solid #edf0e9;border-bottom:1px solid #edf0e9}.evidence-grid small,.evidence-grid strong,.evidence-grid a{display:block}.evidence-grid small{font:8px 'DM Mono',monospace;letter-spacing:.8px;color:#8b9482;margin-bottom:6px}.evidence-grid strong,.evidence-grid a{font-size:10px;color:#34452a;overflow-wrap:anywhere}.evidence-grid a{color:#668d34;font-weight:800}.evidence-card>p{font-size:9px;line-height:1.8;color:#7a8374;margin:0}@media(max-width:560px){.evidence-card{padding:15px}.evidence-grid{gap:12px}.evidence-grid strong,.evidence-grid a{font-size:9px}}
+
+
+/* FlatQuest personal dashboard */
+.dashboard-page{min-height:100vh;background:var(--paper);padding:0 24px 70px;color:var(--ink)}
+.dashboard-shell{width:min(1040px,100%);margin:0 auto}
+.dashboard-nav{height:82px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+.dashboard-nav .wordmark{display:flex;align-items:center;gap:9px;text-decoration:none;font-size:21px;font-weight:800;color:var(--ink)}
+.dashboard-nav .brand-mark{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--lime);color:#20291e}
+.dashboard-nav .brand-mark svg{width:27px;height:27px}
+.dashboard-back{font-size:11px;font-weight:800;color:#607d37;text-decoration:none}
+.dashboard-header{display:flex;align-items:end;justify-content:space-between;gap:30px;padding:76px 0 48px}
+.dashboard-kicker{font:9px 'DM Mono',monospace;letter-spacing:1.4px;color:#82916e}
+.dashboard-header h1,.dashboard-empty h1{font-size:clamp(42px,7vw,70px);line-height:1.02;letter-spacing:-4px;margin:18px 0}
+.dashboard-header h1 em,.dashboard-empty h1 em{font-family:Georgia,serif;font-weight:400;color:#78994a}
+.dashboard-header p,.dashboard-empty p{max-width:490px;color:#778074;font-size:13px;line-height:1.8}
+.dashboard-wallet{min-width:220px;padding:20px;background:#fff;border:1px solid var(--line);border-radius:9px}
+.dashboard-wallet small,.dashboard-wallet strong,.dashboard-wallet a{display:block}
+.dashboard-wallet small,.dashboard-stats article small{font:8px 'DM Mono',monospace;letter-spacing:1px;color:#899381}
+.dashboard-wallet strong{font:13px 'DM Mono',monospace;margin:10px 0}
+.dashboard-wallet a,.dashboard-row-main a,.dashboard-no-activity a{font-size:10px;font-weight:800;color:#668d34;text-decoration:none}
+.dashboard-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.dashboard-stats article{padding:22px 24px;background:#fff;border:1px solid var(--line);border-radius:9px}
+.dashboard-stats article strong{display:block;font-size:36px;letter-spacing:-2px;margin:12px 0 4px}
+.dashboard-stats article span{font-size:10px;color:#84907d}
+.dashboard-progress,.dashboard-history{margin-top:54px}
+.dashboard-section-head{display:flex;align-items:end;justify-content:space-between;gap:20px}
+.dashboard-section-head h2,.dashboard-next h2{font-size:24px;letter-spacing:-1px;margin:8px 0 0}
+.dashboard-section-head>strong{font:18px 'DM Mono',monospace}
+.dashboard-track{height:8px;background:#e7ebdf;border-radius:10px;overflow:hidden;margin-top:20px}
+.dashboard-track span{display:block;height:100%;background:#a7ce63;border-radius:10px}
+.dashboard-progress>p{font-size:10px;color:#7f887a;line-height:1.7}
+.dashboard-section-head>span{font-size:10px;color:#899381}
+.dashboard-rows{margin-top:17px;border-top:1px solid var(--line)}
+.dashboard-row{display:grid;grid-template-columns:36px 1fr auto;align-items:center;gap:15px;padding:19px 4px;border-bottom:1px solid var(--line)}
+.dashboard-row-icon{width:30px;height:30px;display:grid;place-items:center;border-radius:50%;background:#edf3e5;color:#668d34;font-weight:800}
+.dashboard-row-main strong,.dashboard-row-main span,.dashboard-row-main a{display:block}
+.dashboard-row-main strong{font-size:12px}
+.dashboard-row-main span{font-size:9px;color:#879082;margin:5px 0}
+.dashboard-row-date{font-size:9px;color:#899381;text-align:right}
+.dashboard-no-activity{margin-top:17px;padding:25px;background:#fff;border:1px solid var(--line);border-radius:9px}
+.dashboard-no-activity strong{font-size:13px}
+.dashboard-no-activity p{font-size:11px;color:#7f887a}
+.dashboard-next{display:flex;align-items:center;justify-content:space-between;gap:25px;margin-top:54px;padding:28px;background:#20291e;color:#eef3e7;border-radius:10px}
+.dashboard-next .dashboard-kicker{color:var(--lime)}
+.dashboard-next p{max-width:580px;font-size:11px;line-height:1.8;color:#c4ceba}
+.dashboard-next .primary-button{white-space:nowrap;text-decoration:none}
+.dashboard-footer{display:flex;justify-content:space-between;gap:15px;margin-top:36px;padding-top:20px;border-top:1px solid var(--line);font-size:9px;color:#899381}
+.dashboard-empty{max-width:650px;padding:110px 0}
+.dashboard-empty .primary-button{text-decoration:none;display:inline-flex;margin-top:20px}
+.nav-links a:last-child{color:#607d37;font-weight:800}
+@media(max-width:700px){.dashboard-page{padding:0 18px 50px}.dashboard-header{display:block;padding:55px 0 30px}.dashboard-wallet{margin-top:25px}.dashboard-stats{grid-template-columns:1fr}.dashboard-stats article{padding:17px 20px}.dashboard-stats article strong{font-size:30px}.dashboard-next{display:block;padding:22px}.dashboard-next .primary-button{display:inline-flex;margin-top:12px;text-decoration:none}.dashboard-row{grid-template-columns:30px 1fr;gap:11px}.dashboard-row-date{grid-column:2;text-align:left}.dashboard-footer{flex-direction:column}.dashboard-header h1,.dashboard-empty h1{letter-spacing:-2.5px}}
