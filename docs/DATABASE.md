@@ -19,7 +19,7 @@ The migration creates:
 
 - RLS is enabled on every table in the exposed `public` schema.
 - Public visitors can only read published quests and their steps.
-- Authenticated users can read and update only their own profile and unverified quest progress.
+- Authenticated users can read and update only their own profile and unverified quest progress. New progress can only be created for quests that are currently published; the completion policies enforce this at the database layer.
 - Client policies deliberately prevent users from setting a completion to `verified` or writing verification evidence.
 - Trusted server code must verify chain state and write verification records. Never put a Supabase secret or service role key in a browser bundle.
 
