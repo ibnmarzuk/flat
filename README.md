@@ -15,7 +15,7 @@ FlatQuest is not just another quest board. It is a guided path from curiosity to
 - Browser wallet connection through an injected EVM provider
 - Robinhood Chain testnet detection and network switching
 - Transaction verification against the testnet RPC
-- Verification checks for successful receipt, connected wallet sender, and at least two confirmations
+- Verification checks for successful receipt, submitted wallet address matching the transaction sender, and at least two confirmations
 - Local browser progress tracking for the prototype
 - Custom SVG logo and browser favicon
 
@@ -38,7 +38,7 @@ Open http://localhost:3000.
 
 - Quest progress is stored in localStorage. It is not yet a user account or shared database.
 - The explore quest is self-reported and is not an onchain verification.
-- Transaction verification is read-only and depends on the public testnet RPC.
+- Transaction verification is read-only and depends on the public testnet RPC. It checks public transaction facts against a submitted address, but does not authenticate wallet ownership or prove a specific app interaction.
 - No token purchase, private key, or seed phrase is required.
 - The AI guide, campaign creator, production database, and mainnet support are not implemented yet.
 
