@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useEffect, useMemo, useState } from "react";
 
 declare global {
@@ -137,7 +139,7 @@ export default function Home() {
       </div>
       <div className="quest-list">
         <div className="quest-toolbar"><div><span className="eyebrow">THE QUEST BOARD</span><h3>Pick your path</h3></div><select value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Filter quests"><option>All quests</option><option>Getting started</option><option>Onchain proof</option><option>Explore</option></select></div>
-        {filtered.map((q) => <article className="quest-card" key={q.id}><div className="quest-card-top"><span className="quest-index">0{q.id}</span><span className="quest-category">{q.category}</span><span className={completed.includes(q.id) ? "status complete" : "status"}>{completed.includes(q.id) ? "✓ Completed" : "○ Available"}</span></div><h4>{q.title}</h4><p>{q.description}</p>
+        {filtered.map((q) => <article className="quest-card" key={q.id}><div className="quest-card-top"><span className="quest-index">0{q.id}</span><span className="quest-category">{q.category}</span><span className={completed.includes(q.id) ? "status complete" : "status"}>{completed.includes(q.id) ? "✓ Completed" : "○ Available"}</span></div><h4>{q.title}</h4><p>{q.description}</p><Link className="quest-guide-link" href={`/quests/${["connect-wallet", "robinhood-testnet", "prove-transaction", "explore-ecosystem"][q.id - 1]}`}>Read quest guide ↗</Link>
           {q.type === "transaction" && <div className="verify-field"><input value={hash} onChange={(e) => setHash(e.target.value)} placeholder="Paste transaction hash (0x…)" aria-label="Transaction hash"/><button onClick={verifyTransaction} disabled={busy}>{busy ? "Checking..." : "Verify proof"}</button></div>}
           {q.type === "explore" && <div className="explore-action"><button onClick={() => { setExplored(!explored); if (!explored) { save(4); setNotice("Explorer milestone recorded on this device. This is not an onchain verification."); } }}>{explored ? "Explored ✓" : "I explored the ecosystem"}</button><a href="https://worldisflat.fun/" target="_blank" rel="noreferrer">Open World Is Flat ↗</a></div>}
           {q.type === "wallet" && <button className="quest-action" onClick={connect}>{account ? "Wallet connected ✓" : "Connect wallet ↗"}</button>}
