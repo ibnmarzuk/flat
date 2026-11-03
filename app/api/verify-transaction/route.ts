@@ -131,7 +131,7 @@ export async function POST(request: Request) {
 
     const db = (await import("@/lib/db")).getDb();
     await db.begin(async (tx) => {
-      const completionRows = await tx<{ id: string }[]>\`
+      const completionRows = await tx<{ id: string }[]>`
         insert into public.completions (wallet_address, quest_id, status, submitted_at, verified_at)
         select ${walletAddress.toLowerCase()}, id, 'verified', now(), now()
         from public.quests where slug = 'prove-transaction'
@@ -139,10 +139,10 @@ export async function POST(request: Request) {
           set status = 'verified', submitted_at = coalesce(public.completions.submitted_at, now()),
               verified_at = now(), updated_at = now()
         returning id
-      \`;
+      `;
       const completion = completionRows[0];
       if (!completion) throw new Error("Quest record unavailable.");
-      await tx\`
+      await tx`
         insert into public.verification_records
           (completion_id, chain_id, wallet_address, transaction_hash, block_number, confirmations, verification_method, evidence, verified_at)
         values (
@@ -152,7 +152,7 @@ export async function POST(request: Request) {
           ${JSON.stringify({ blockHash: receipt.blockHash, transactionTo: transaction.to, transactionValue: transaction.value, inputDataBytes: Math.max(0, (transaction.input.length - 2) / 2) })}::jsonb,
           now()
         )
-      \`;
+      `;
     });
 
     return NextResponse.json({
