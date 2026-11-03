@@ -22,7 +22,15 @@ function Mark({ small = false }: { small?: boolean }) {
   return <span className={small ? "brand-mark small" : "brand-mark"} aria-hidden="true"><svg viewBox="0 0 64 64" fill="none"><path d="M14 43.5C19.2 43.5 20.3 32 29 32C36.2 32 36.4 20.5 49 20.5" stroke="currentColor" strokeWidth="4.2" strokeLinecap="round"/><circle cx="14" cy="43.5" r="5" fill="currentColor"/><circle cx="29" cy="32" r="5" fill="currentColor" stroke="#C7F36B" strokeWidth="2"/><path d="m42 20.5 5.2 5.2 8.3-10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
 }
 
-export default function Home() {
+async function loadPersistentProgress() {
+    try {
+      const response = await fetch("/api/progress", { cache: "no-store" });
+      if (!response.ok) return;
+      const data = await response.json() as { completions?: { slug: string; status: string }[] };
+      const ids = (data.completions || []).filter((item) => item.status === "verified" || item.status === "submitted").map((item) => ({ "connect-wallet": 1, "robinhood-testnet": 2, "prove-transaction": 3, "explore-ecosystem": 4 }[item.slug as "connect-wallet" | "robinhood-testnet" | "prove-transaction" | "explore-ecosystem"])).filter((id): id is number => typeof id === "number");
+      setCompleted((old) => [...new Set([...old, ...ids])]);
+    } catch {}
+  }\n\nexport default function Home() {
   const [quests, setQuests] = useState<Quest[]>(initialQuests);
   const [account, setAccount] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
@@ -39,7 +47,7 @@ export default function Home() {
     fetch("/api/quests").then((response) => response.ok ? response.json() : Promise.reject(new Error("Quest API unavailable"))).then((data: { quests?: Quest[] }) => { if (Array.isArray(data.quests) && data.quests.length) setQuests(data.quests); }).catch(() => {});
     try { const savedProgress = JSON.parse(localStorage.getItem("flatquest-progress") || "[]"); const safeProgress = Array.isArray(savedProgress) ? savedProgress.filter((id): id is number => Number.isInteger(id) && id >= 1 && id <= 4) : []; setCompleted(safeProgress); setExplored(safeProgress.includes(4)); const savedEvidence = localStorage.getItem("flatquest-verification-evidence"); if (savedEvidence) setVerificationEvidence(JSON.parse(savedEvidence)); } catch {}
     fetch("/api/auth/session", { cache: "no-store" }).then((response) => response.ok ? response.json() : Promise.reject()).then((session: { authenticated?: boolean; walletAddress?: string }) => {
-      if (session.authenticated && session.walletAddress) { setAccount(session.walletAddress); setAuthenticated(true); }
+      if (session.authenticated && session.walletAddress) { setAccount(session.walletAddress); setAuthenticated(true); loadPersistentProgress(); }
     }).catch(() => {});
     if (window.ethereum) {
       window.ethereum.request({ method: "eth_accounts" }).then((a) => { const list = a as string[]; if (list[0]) setAccount((current) => current || list[0]); }).catch(() => {});
@@ -83,6 +91,7 @@ export default function Home() {
       const result = await verifyResponse.json() as { authenticated?: boolean; error?: string };
       if (!verifyResponse.ok || !result.authenticated) throw new Error(result.error || "Wallet sign in failed.");
       setAuthenticated(true);
+      await loadPersistentProgress();
       setNotice("Wallet ownership verified. Your FlatQuest account is ready.");
     } catch (error) {
       setAuthenticated(false);
@@ -102,7 +111,7 @@ export default function Home() {
     }
     const id = await window.ethereum.request({ method: "eth_chainId" }) as string;
     setChainId(id);
-    if (id.toLowerCase() === CHAIN_ID.toLowerCase()) { save(2); setNotice("Robinhood Chain testnet detected."); }
+    if (id.toLowerCase() === CHAIN_ID.toLowerCase()) { setNotice("Robinhood Chain testnet detected. This prototype does not yet treat a client-side network switch as verified completion."); }
   }
 
   async function verifyTransaction() {
@@ -167,9 +176,9 @@ export default function Home() {
       </div>
       <div className="quest-list">
         <div className="quest-toolbar"><div><span className="eyebrow">THE QUEST BOARD</span><h3>Pick your path</h3></div><select value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Filter quests"><option>All quests</option><option>Getting started</option><option>Onchain proof</option><option>Explore</option></select></div>
-        {filtered.map((q) => <article className="quest-card" key={q.id}><div className="quest-card-top"><span className="quest-index">0{q.id}</span><span className="quest-category">{q.category}</span><span className={completed.includes(q.id) ? "status complete" : "status"}>{completed.includes(q.id) ? q.id === 3 && verificationEvidence ? "✓ Onchain verified" : "✓ Recorded locally" : "○ Available"}</span></div><h4>{q.title}</h4><p>{q.description}</p><Link className="quest-guide-link" href={`/quests/${q.slug}`}>Read quest guide ↗</Link>
+        {filtered.map((q) => <article className="quest-card" key={q.id}><div className="quest-card-top"><span className="quest-index">0{q.id}</span><span className="quest-category">{q.category}</span><span className={completed.includes(q.id) ? "status complete" : "status"}>{completed.includes(q.id) ? q.id === 3 && verificationEvidence ? "✓ Onchain verified" : q.id === 4 ? "✓ Self reported" : q.id === 1 && authenticated ? "✓ Wallet verified" : "✓ Recorded locally" : "○ Available"}</span></div><h4>{q.title}</h4><p>{q.description}</p><Link className="quest-guide-link" href={`/quests/${q.slug}`}>Read quest guide ↗</Link>
           {q.type === "transaction" && <div className="verify-field"><input value={hash} onChange={(e) => setHash(e.target.value)} placeholder="Paste transaction hash (0x…)" aria-label="Transaction hash"/><button onClick={verifyTransaction} disabled={busy}>{busy ? "Checking..." : "Verify proof"}</button></div>}
-          {q.type === "explore" && <div className="explore-action"><button onClick={() => { setExplored(!explored); if (!explored) { save(4); setNotice("Explorer milestone recorded on this device. This is not an onchain verification."); } }}>{explored ? "Explored ✓" : "I explored the ecosystem"}</button><a href="https://worldisflat.fun/" target="_blank" rel="noreferrer">Open World Is Flat ↗</a></div>}
+          {q.type === "explore" && <div className="explore-action"><button onClick={() => { setExplored(!explored); if (!explored) { save(4); if (authenticated) fetch("/api/progress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ questSlug: "explore-ecosystem", status: "submitted" }) }).then((response) => { if (!response.ok) throw new Error("Could not save progress"); setNotice("Explorer milestone saved to your FlatQuest account as a self-reported step."); }).catch(() => setNotice("Explorer milestone is recorded on this device only. Sign in and try again to sync it.")); else setNotice("Explorer milestone recorded on this device. Sign in to sync it to your account."); } }}>{explored ? "Explored ✓" : "I explored the ecosystem"}</button><a href="https://worldisflat.fun/" target="_blank" rel="noreferrer">Open World Is Flat ↗</a></div>}
           {q.type === "wallet" && <button className="quest-action" onClick={connect}>{account ? "Wallet connected ✓" : "Connect wallet ↗"}</button>}
           {q.type === "network" && <button className="quest-action" onClick={switchNetwork}>{chainId.toLowerCase() === CHAIN_ID.toLowerCase() ? "Robinhood Chain testnet ✓" : "Switch to testnet ↗"}</button>}
         </article>)}
