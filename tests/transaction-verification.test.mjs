@@ -77,3 +77,36 @@ test("rejects non-string block heights without throwing", () => {
 test("rejects a missing block height without throwing", () => {
   assert.equal(getConfirmationCount(undefined, "0x10"), null);
 });
+
+import {
+  hasMinimumConfirmations,
+  isExpectedChainId,
+  isSuccessfulReceipt,
+  isTransactionSender
+} from "../lib/transaction-verification.js";
+
+test("accepts only the configured Robinhood testnet chain ID", () => {
+  assert.equal(isExpectedChainId("0xb626"), true);
+  assert.equal(isExpectedChainId("0x1"), false);
+  assert.equal(isExpectedChainId(null), false);
+});
+
+test("accepts only successful transaction receipts", () => {
+  assert.equal(isSuccessfulReceipt("0x1"), true);
+  assert.equal(isSuccessfulReceipt("0x0"), false);
+  assert.equal(isSuccessfulReceipt(null), false);
+});
+
+test("requires the transaction sender to match the authenticated wallet", () => {
+  const wallet = "0x" + "a".repeat(40);
+  assert.equal(isTransactionSender(wallet, wallet.toUpperCase().replace("0X","0x")), true);
+  assert.equal(isTransactionSender("0x" + "b".repeat(40), wallet), false);
+  assert.equal(isTransactionSender("invalid", wallet), false);
+});
+
+test("requires at least two confirmations before verification", () => {
+  assert.equal(hasMinimumConfirmations(1n), false);
+  assert.equal(hasMinimumConfirmations(2n), true);
+  assert.equal(hasMinimumConfirmations(3n), true);
+  assert.equal(hasMinimumConfirmations(2), false);
+});
