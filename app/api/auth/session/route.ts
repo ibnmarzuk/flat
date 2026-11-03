@@ -13,13 +13,13 @@ export async function GET() {
   }
   try {
     const db = getDb();
-    const rows = await db<{ wallet_address: string; expires_at: Date | string }[]>\`
+    const rows = await db<{ wallet_address: string; expires_at: Date | string }[]>`
       select wallet_address, expires_at
       from public.wallet_sessions
       where token_hash = ${hashToken(token)}
         and revoked_at is null and expires_at > now()
       limit 1
-    \`;
+    `;
     if (!rows[0]) return NextResponse.json({ authenticated: false }, { headers: { "Cache-Control": "no-store" } });
     return NextResponse.json({
       authenticated: true,
@@ -37,10 +37,10 @@ export async function DELETE() {
   if (token && /^[0-9a-f]{64}$/.test(token)) {
     try {
       const db = getDb();
-      await db\`
+      await db`
         update public.wallet_sessions set revoked_at = now()
         where token_hash = ${hashToken(token)} and revoked_at is null
-      \`;
+      `;
     } catch {
       return NextResponse.json({ error: "Sign out is temporarily unavailable." }, { status: 503 });
     }
