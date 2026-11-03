@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { verifyMessage, type Address, type Hex } from "viem";
 import { getDb } from "@/lib/db";
 import { buildWalletSignInMessage, createSessionToken, getSessionCookieOptions, hashToken, SESSION_COOKIE } from "@/lib/auth";
+import { consumeWalletRateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,8 +32,10 @@ export async function POST(request: Request) {
   const nonce = input.nonce as string;
 
   try {
-    const db = getDb();
     const address = input.address.toLowerCase();
+    const rate = await consumeWalletRateLimit("auth_verify", address, 10, 600);
+    if (!rate.allowed) return NextResponse.json({ error: "Too many sign in attempts. Request a new challenge later." }, { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds) } });
+    const db = getDb();
     const challenges = await db<{ nonce: string; created_at: Date | string; expires_at: Date | string }[]>`
       select nonce, created_at, expires_at
       from public.wallet_auth_challenges
