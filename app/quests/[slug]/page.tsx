@@ -37,7 +37,7 @@ const guides = {
     steps: [
       ["Complete a testnet transaction", "Use a trusted testnet application or faucet. Check the destination and transaction details in your wallet before signing."],
       ["Wait for confirmation", "The transaction must succeed and be included in a block. This prototype requires at least two confirmations."],
-      ["Submit the transaction hash", "Paste the 32 byte transaction hash into the quest card. The prototype checks the receipt status, sender address and confirmation count against Robinhood Chain testnet."]
+      ["Submit the transaction hash", "Paste the 32 byte transaction hash into the quest card. The prototype checks the receipt status, transaction sender against the submitted wallet address, and confirmation count against Robinhood Chain testnet. This does not prove wallet ownership or a specific app interaction."]
     ],
     resource: "https://explorer.testnet.chain.robinhood.com/"
   },
