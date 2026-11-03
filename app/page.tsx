@@ -30,7 +30,7 @@ export default function Home() {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [explored, setExplored] = useState(false);
-  const [verificationEvidence, setVerificationEvidence] = useState<{ transactionHash: string; walletAddress: string; blockNumber: number; blockHash: string; confirmations: number; verifiedAt: string } | null>(null);
+  const [verificationEvidence, setVerificationEvidence] = useState<{ transactionHash: string; walletAddress: string; blockNumber: number; blockHash: string; transactionTo: string | null; transactionValue: string; inputDataBytes: number; confirmations: number; verifiedAt: string } | null>(null);
 
   useEffect(() => {
     try { setCompleted(JSON.parse(localStorage.getItem("flatquest-progress") || "[]")); const savedEvidence = localStorage.getItem("flatquest-verification-evidence"); if (savedEvidence) setVerificationEvidence(JSON.parse(savedEvidence)); } catch {}
@@ -86,11 +86,11 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ transactionHash: hash.trim(), walletAddress: account })
       });
-      const result = await response.json() as { verified?: boolean; confirmations?: number; error?: string; transactionHash?: string; walletAddress?: string; blockNumber?: number; blockHash?: string; verifiedAt?: string };
+      const result = await response.json() as { verified?: boolean; confirmations?: number; error?: string; transactionHash?: string; walletAddress?: string; blockNumber?: number; blockHash?: string; verifiedAt?: string; transactionTo?: string | null; transactionValue?: string; inputDataBytes?: number };
       if (!response.ok || !result.verified) {
         throw new Error(result.error || "Verification failed. Please try again.");
       }
-      const evidence = { transactionHash: result.transactionHash || hash.trim(), walletAddress: result.walletAddress || account, blockNumber: result.blockNumber || 0, blockHash: result.blockHash || "", confirmations: result.confirmations || 0, verifiedAt: result.verifiedAt || new Date().toISOString() };
+      const evidence = { transactionHash: result.transactionHash || hash.trim(), walletAddress: result.walletAddress || account, blockNumber: result.blockNumber || 0, blockHash: result.blockHash || "", transactionTo: result.transactionTo ?? null, transactionValue: result.transactionValue || "0x0", inputDataBytes: result.inputDataBytes || 0, confirmations: result.confirmations || 0, verifiedAt: result.verifiedAt || new Date().toISOString() };
       localStorage.setItem("flatquest-verification-evidence", JSON.stringify(evidence));
       setVerificationEvidence(evidence);
       save(3); setNotice("Transaction receipt verified against Robinhood Chain testnet. Evidence is saved in this browser only.");
@@ -143,7 +143,7 @@ export default function Home() {
           {q.type === "wallet" && <button className="quest-action" onClick={connect}>{account ? "Wallet connected ✓" : "Connect wallet ↗"}</button>}
           {q.type === "network" && <button className="quest-action" onClick={switchNetwork}>{chainId.toLowerCase() === CHAIN_ID.toLowerCase() ? "Robinhood Chain testnet ✓" : "Switch to testnet ↗"}</button>}
         </article>)}
-        {verificationEvidence && <section className="evidence-card" aria-label="Transaction verification evidence"><div className="evidence-heading"><span className="evidence-badge">✓</span><div><strong>Transaction receipt verified</strong><small>ROBINHOOD CHAIN TESTNET · 46630</small></div></div><div className="evidence-grid"><div><small>TRANSACTION</small><a href={"https://explorer.testnet.chain.robinhood.com/tx/" + verificationEvidence.transactionHash} target="_blank" rel="noreferrer">{verificationEvidence.transactionHash.slice(0, 10)}…{verificationEvidence.transactionHash.slice(-8)} ↗</a></div><div><small>BLOCK</small><strong>{verificationEvidence.blockNumber.toLocaleString()}</strong></div><div><small>CONFIRMATIONS</small><strong>{verificationEvidence.confirmations}</strong></div><div><small>WALLET</small><strong>{verificationEvidence.walletAddress.slice(0, 8)}…{verificationEvidence.walletAddress.slice(-6)}</strong></div></div><p>Receipt evidence is stored in this browser only. This check confirms a successful transaction from this wallet. It does not yet prove a specific quest action or create a permanent account record.</p></section>}
+        {verificationEvidence && <section className="evidence-card" aria-label="Transaction verification evidence"><div className="evidence-heading"><span className="evidence-badge">✓</span><div><strong>Transaction receipt verified</strong><small>ROBINHOOD CHAIN TESTNET · 46630</small></div></div><div className="evidence-grid"><div><small>TRANSACTION</small><a href={"https://explorer.testnet.chain.robinhood.com/tx/" + verificationEvidence.transactionHash} target="_blank" rel="noreferrer">{verificationEvidence.transactionHash.slice(0, 10)}…{verificationEvidence.transactionHash.slice(-8)} ↗</a></div><div><small>BLOCK</small><strong>{verificationEvidence.blockNumber.toLocaleString()}</strong></div><div><small>CONFIRMATIONS</small><strong>{verificationEvidence.confirmations}</strong></div><div><small>WALLET</small><strong>{verificationEvidence.walletAddress.slice(0, 8)}…{verificationEvidence.walletAddress.slice(-6)}</strong></div><div><small>RECIPIENT</small><strong>{verificationEvidence.transactionTo ? verificationEvidence.transactionTo.slice(0, 8) + "…" + verificationEvidence.transactionTo.slice(-6) : "Contract creation"}</strong></div><div><small>INPUT DATA</small><strong>{verificationEvidence.inputDataBytes} bytes</strong></div></div><p>Receipt evidence is stored in this browser only. This check confirms a successful transaction from this wallet. It does not yet prove a specific quest action or create a permanent account record.</p></section>}
         {notice && <div className="notice" role="status"><span>i</span>{notice}<button onClick={() => setNotice("")} aria-label="Dismiss message">×</button></div>}
         <div className="demo-note">Progress is currently stored in this browser. Transaction proof is checked against Robinhood Chain testnet. No wallet custody, no invented completions.</div>
       </div>
