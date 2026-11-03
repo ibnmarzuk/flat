@@ -39,10 +39,10 @@ export async function POST(request: Request) {
 
   try {
     const db = getDb();
-    await db\`
+    await db`
       insert into public.wallet_auth_challenges (wallet_address, nonce, created_at, expires_at)
       values (${address.toLowerCase()}, ${nonce}, ${issuedAt.toISOString()}, ${expiresAt.toISOString()})
-    \`;
+    `;
     return NextResponse.json({ nonce, message, expiresAt: expiresAt.toISOString() }, {
       headers: { "Cache-Control": "no-store" }
     });
