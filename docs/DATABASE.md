@@ -25,7 +25,7 @@ The migration creates:
 
 ## Current transaction verification prototype
 
-`POST /api/verify-transaction` checks a submitted transaction against Robinhood Chain testnet from the server. It confirms the configured RPC reports chain ID `46630`, the receipt succeeded, the transaction sender matches the submitted wallet address, and at least two confirmations exist.
+`POST /api/verify-transaction` checks a submitted transaction against Robinhood Chain testnet from the server. It confirms the configured RPC reports chain ID `46630`, the receipt succeeded, the transaction sender matches the submitted wallet address, the receipt and transaction hashes match the requested hash, the included block hash and number agree across both RPC responses, and at least two confirmations exist. The returned evidence also includes the recipient, value and input data size.
 
 This proves public transaction facts only. It does not authenticate the person submitting the request, prove that the wallet belongs to an authenticated FlatQuest account, or establish that the transaction performed a particular quest action. The endpoint currently returns evidence but does not persist it. Add wallet signature authentication, request throttling, quest-specific transaction conditions, and trusted database writes before treating this as production completion verification.
 
