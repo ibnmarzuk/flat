@@ -40,7 +40,7 @@ Open http://localhost:3000.
 - The explore quest is self-reported and is not an onchain verification.
 - Transaction verification is read-only and depends on the public testnet RPC. It checks public transaction facts against a submitted address, but does not authenticate wallet ownership or prove a specific app interaction.
 - No token purchase, private key, or seed phrase is required.
-- The AI guide, campaign creator, production database, and mainnet support are not implemented yet.
+- The AI guide, campaign creator, production database integration, wallet authentication, and mainnet support are not implemented yet.
 
 ## Brand meaning
 
@@ -52,8 +52,6 @@ The repository is connected to the Vercel project `flatquest-preview`. Pushes to
 
 ## Database foundation
 
-A dedicated Supabase schema has been prepared in `supabase/migrations/20261102000000_initial_flatquest_schema.sql`.
+FlatQuest is designed for a dedicated Neon Postgres database. The provider-neutral schema and seed data are in `drizzle/0000_flatquest_init.sql`. The migration is committed but has **not** been applied because the Neon project and connection credentials have not yet been configured. The app therefore continues to use browser-local progress.
 
-It includes published quests and guided steps, authenticated user profiles, user-owned quest completions, and server-only verification evidence. Row Level Security is enabled throughout. Client-side policies intentionally cannot mark quests as verified or write verification records.
-
-See [Database setup](docs/DATABASE.md). The migration is committed but has **not** been applied because the dedicated FlatQuest Supabase project has not yet been provisioned. The current app therefore continues to use browser-local progress.
+See [Database setup](docs/DATABASE.md).
