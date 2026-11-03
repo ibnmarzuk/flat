@@ -112,6 +112,10 @@ create policy "Users start their own quests"
   on public.completions for insert to authenticated
   with check (
     (select auth.uid()) = user_id
+    and exists (
+      select 1 from public.quests q
+      where q.id = quest_id and q.is_published = true
+    )
     and status in ('started','submitted')
     and verified_at is null
   );
@@ -121,6 +125,10 @@ create policy "Users update their own unverified completions"
   using ((select auth.uid()) = user_id and status in ('started','submitted'))
   with check (
     (select auth.uid()) = user_id
+    and exists (
+      select 1 from public.quests q
+      where q.id = quest_id and q.is_published = true
+    )
     and status in ('started','submitted')
     and verified_at is null
   );
