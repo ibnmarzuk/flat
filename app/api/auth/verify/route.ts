@@ -28,6 +28,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid wallet sign in request." }, { status: 400 });
   }
 
+  const nonce = input.nonce as string;
+
   try {
     const db = getDb();
     const address = input.address.toLowerCase();
@@ -35,7 +37,7 @@ export async function POST(request: Request) {
       select nonce, created_at, expires_at
       from public.wallet_auth_challenges
       where wallet_address = ${address}
-        and nonce = ${input.nonce}
+        and nonce = ${nonce}
         and consumed_at is null
         and expires_at > now()
       limit 1
@@ -69,7 +71,7 @@ export async function POST(request: Request) {
         update public.wallet_auth_challenges
         set consumed_at = now()
         where wallet_address = ${address}
-          and nonce = ${input.nonce}
+          and nonce = ${nonce}
           and consumed_at is null
           and expires_at > now()
         returning wallet_address
