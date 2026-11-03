@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 declare global {
   interface Window { ethereum?: { request: (args: { method: string; params?: unknown[] }) => Promise<unknown>; on?: (event: string, cb: (...args: unknown[]) => void) => void; removeListener?: (event: string, cb: (...args: unknown[]) => void) => void } }
@@ -22,15 +22,7 @@ function Mark({ small = false }: { small?: boolean }) {
   return <span className={small ? "brand-mark small" : "brand-mark"} aria-hidden="true"><svg viewBox="0 0 64 64" fill="none"><path d="M14 43.5C19.2 43.5 20.3 32 29 32C36.2 32 36.4 20.5 49 20.5" stroke="currentColor" strokeWidth="4.2" strokeLinecap="round"/><circle cx="14" cy="43.5" r="5" fill="currentColor"/><circle cx="29" cy="32" r="5" fill="currentColor" stroke="#C7F36B" strokeWidth="2"/><path d="m42 20.5 5.2 5.2 8.3-10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
 }
 
-async function loadPersistentProgress() {
-    try {
-      const response = await fetch("/api/progress", { cache: "no-store" });
-      if (!response.ok) return;
-      const data = await response.json() as { completions?: { slug: string; status: string }[] };
-      const ids = (data.completions || []).filter((item) => item.status === "verified" || item.status === "submitted").map((item) => ({ "connect-wallet": 1, "robinhood-testnet": 2, "prove-transaction": 3, "explore-ecosystem": 4 }[item.slug as "connect-wallet" | "robinhood-testnet" | "prove-transaction" | "explore-ecosystem"])).filter((id): id is number => typeof id === "number");
-      setCompleted((old) => [...new Set([...old, ...ids])]);
-    } catch {}
-  }\n\nexport default function Home() {
+export default function Home() {
   const [quests, setQuests] = useState<Quest[]>(initialQuests);
   const [account, setAccount] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
@@ -42,6 +34,16 @@ async function loadPersistentProgress() {
   const [busy, setBusy] = useState(false);
   const [explored, setExplored] = useState(false);
   const [verificationEvidence, setVerificationEvidence] = useState<{ transactionHash: string; walletAddress: string; blockNumber: number; blockHash: string; transactionTo: string | null; transactionValue: string; inputDataBytes: number; confirmations: number; verifiedAt: string } | null>(null);
+
+  const loadPersistentProgress = useCallback(async () => {
+    try {
+      const response = await fetch("/api/progress", { cache: "no-store" });
+      if (!response.ok) return;
+      const data = await response.json() as { completions?: { slug: string; status: string }[] };
+      const ids = (data.completions || []).filter((item) => item.status === "verified" || item.status === "submitted").map((item) => ({ "connect-wallet": 1, "robinhood-testnet": 2, "prove-transaction": 3, "explore-ecosystem": 4 }[item.slug as "connect-wallet" | "robinhood-testnet" | "prove-transaction" | "explore-ecosystem"])).filter((id): id is number => typeof id === "number");
+      setCompleted((old) => [...new Set([...old, ...ids])]);
+    } catch {}
+  }, []);
 
   useEffect(() => {
     fetch("/api/quests").then((response) => response.ok ? response.json() : Promise.reject(new Error("Quest API unavailable"))).then((data: { quests?: Quest[] }) => { if (Array.isArray(data.quests) && data.quests.length) setQuests(data.quests); }).catch(() => {});
@@ -63,7 +65,7 @@ async function loadPersistentProgress() {
       window.ethereum.on?.("chainChanged", onChain);
       return () => { window.ethereum?.removeListener?.("accountsChanged", onAccounts); window.ethereum?.removeListener?.("chainChanged", onChain); };
     }
-  }, []);
+  }, [loadPersistentProgress]);
 
   const save = (id: number) => setCompleted((old) => { const next = [...new Set([...old, id])]; localStorage.setItem("flatquest-progress", JSON.stringify(next)); return next; });
   const progress = Math.round((completed.length / quests.length) * 100);
