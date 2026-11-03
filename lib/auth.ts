@@ -26,14 +26,14 @@ export async function getAuthenticatedWallet(cookieHeader: string | null) {
   const token = cookieHeader?.split(";").map((part) => part.trim()).find((part) => part.startsWith(SESSION_COOKIE + "="))?.slice(SESSION_COOKIE.length + 1);
   if (!token || !/^[0-9a-f]{64}$/.test(token)) return null;
   const db = getDb();
-  const rows = await db<{ wallet_address: string }[]>\`
+  const rows = await db<{ wallet_address: string }[]>`
     select wallet_address
     from public.wallet_sessions
     where token_hash = ${hashToken(decodeURIComponent(token))}
       and revoked_at is null
       and expires_at > now()
     limit 1
-  \`;
+  `;
   return rows[0]?.wallet_address ?? null;
 }
 
