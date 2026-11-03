@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getConfirmationCount, hasConsistentTransactionEvidence } from "@/lib/transaction-verification";
 import { getAuthenticatedWallet } from "@/lib/auth";
+import { consumeWalletRateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -75,6 +76,9 @@ export async function POST(request: Request) {
     if (!authenticatedWallet || authenticatedWallet.toLowerCase() !== walletAddress.toLowerCase()) {
       return NextResponse.json({ error: "Sign in with the wallet that sent this transaction before submitting proof." }, { status: 401 });
     }
+
+    const rate = await consumeWalletRateLimit("transaction_verify", walletAddress, 10, 3600);
+    if (!rate.allowed) return NextResponse.json({ error: "Too many proof checks. Try again later." }, { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds) } });
 
     const chainId = await rpc<string>("eth_chainId", []);
     if (chainId.toLowerCase() !== EXPECTED_CHAIN_ID) {
