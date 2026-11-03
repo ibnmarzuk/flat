@@ -1,56 +1,57 @@
 # FlatQuest database setup
 
-## Project isolation
+## Provider
 
-FlatQuest uses a dedicated Supabase project. Do not reuse the Supabase project for another portfolio or application.
+FlatQuest uses a dedicated Neon Postgres database. It does not depend on Supabase. Neon provides managed PostgreSQL; the application connects from trusted server code only.
 
-## Current schema
+## Connection variables
 
-Apply `supabase/migrations/20261102000000_initial_flatquest_schema.sql` to the new FlatQuest project.
+Set these in Vercel after creating the Neon project:
 
-The migration creates:
+- `DATABASE_URL`: Neon pooled connection string for runtime queries. Keep the hostname's `-pooler` suffix.
+- `DATABASE_URL_UNPOOLED`: Neon direct connection string for schema migrations and Drizzle Kit.
+
+Both values are secrets. Never prefix them with `NEXT_PUBLIC_`, commit them, paste them into source code, or expose them to browser code. Neon connection strings are available from the Connect modal in the Neon Console. Keep SSL enabled.
+
+## Schema
+
+Apply `drizzle/0000_flatquest_init.sql` to the dedicated Neon database. It creates:
 
 - `quests` and `quest_steps` for published onboarding content
-- `profiles` for each authenticated user and their linked wallet
-- `completions` for user-owned quest progress
-- `verification_records` for trusted verification evidence
+- `profiles` keyed by normalized wallet address
+- `completions` for wallet-owned quest progress
+- `verification_records` for server-written verification evidence
+
+The schema is provider-neutral PostgreSQL. The migration seeds the initial four quests and their guided steps.
 
 ## Security model
 
-- RLS is enabled on every table in the exposed `public` schema.
-- Public visitors can only read published quests and their steps.
-- Authenticated users can read and update only their own profile and unverified quest progress. New progress can only be created for quests that are currently published; the completion policies enforce this at the database layer.
-- Client policies deliberately prevent users from setting a completion to `verified` or writing verification evidence.
-- Trusted server code must verify chain state and write verification records. Never put a Supabase secret or service role key in a browser bundle.
+Neon is a database service, not a complete authentication product. There is no Supabase Auth or automatic RLS policy layer in this architecture. The app must access the database only from server routes and server-only modules. Do not create a browser database client.
+
+Before accepting a wallet as a user identity, implement a signed challenge flow with a cryptographically random nonce, domain binding, expiry, signature verification, and durable one-time nonce consumption. A connected wallet address alone is not authentication.
+
+All completion writes must validate the authenticated wallet against the session on the server. Clients must never be allowed to set `verified`, write `verified_at`, or insert verification records. Those operations belong to trusted verification code after checking chain evidence. Keep admin credentials and database connection strings server only. Use parameterized queries or a typed ORM, never concatenate user input into SQL.
 
 ## Current transaction verification prototype
 
-`POST /api/verify-transaction` accepts only the `prove-transaction` quest ID and checks a submitted transaction against Robinhood Chain testnet from the server. Its proof scope is explicitly `successful_wallet_transaction`: it verifies a successful transaction sent by the connected address, not a particular contract interaction or ecosystem task. Other quests are rejected by this endpoint until their own verification rules are implemented. It confirms the configured RPC reports chain ID `46630`, the receipt succeeded, the transaction sender matches the submitted wallet address, the receipt and transaction hashes match the requested hash, the included block hash and number agree across both RPC responses, and at least two confirmations exist. The returned evidence also includes the recipient, value and input data size.
+`POST /api/verify-transaction` accepts only the `prove-transaction` quest ID and checks a submitted transaction against Robinhood Chain testnet from the server. Its proof scope is explicitly `successful_wallet_transaction`: it verifies a successful transaction sent by the submitted address, not a particular contract interaction or ecosystem task. It confirms the configured RPC reports chain ID `46630`, the receipt succeeded, the transaction sender matches the submitted wallet address, the receipt and transaction hashes match the requested hash, the included block hash and number agree across both RPC responses, and at least two confirmations exist.
 
-This proves public transaction facts only. It does not authenticate the person submitting the request or prove that the submitted address belongs to them. It also does not prove that the transaction performed a particular quest action. The endpoint rejects request bodies larger than 2 KB and currently returns evidence without persisting it. This payload limit is input hardening, not rate limiting. Add wallet signature authentication, durable request throttling, quest-specific transaction conditions, and trusted database writes before treating this as production completion verification.
+This proves public transaction facts only. It does not authenticate the person submitting the request, prove wallet ownership, or persist evidence. The endpoint rejects request bodies larger than 2 KB. This is input hardening, not rate limiting. Add wallet signature authentication, durable request throttling, quest-specific transaction conditions, and trusted database writes before treating this as production completion verification.
 
 The optional `ROBINHOOD_TESTNET_RPC_URL` environment variable can point to a dedicated RPC provider. If unset, the endpoint uses the public Robinhood Chain testnet RPC.
 
-## Wallet ownership
-
-A wallet address stored in `profiles` is not proof of ownership by itself. Before treating a wallet as linked, the server must verify a fresh signed challenge from that address, with domain, nonce, expiry and replay protection.
-
-## Environment variables
-
-Set these in Vercel only after the dedicated Supabase project is provisioned:
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
-- `SUPABASE_SECRET_KEY` (server only, never prefix with NEXT_PUBLIC)
-- `ROBINHOOD_TESTNET_RPC_URL` (optional server only)
-
-Do not add placeholder credentials. Keep the existing browser-only prototype functional until the real project credentials are available.
-
 ## Apply and verify
 
-1. Create the dedicated project in the intended organization.
-2. Apply the migration using Supabase migrations.
-3. Inspect the tables and RLS policies in Supabase.
-4. Run the Supabase security advisors.
-5. Test anonymous reads of published quests and authenticated ownership isolation.
-6. Configure Auth providers before enabling persistent user progress in the app.
+1. Create a dedicated Neon project and database.
+2. Copy both pooled and direct connection strings from Neon's Connect modal.
+3. Configure the two server environment variables in Vercel.
+4. Apply `drizzle/0000_flatquest_init.sql` using the direct connection.
+5. Verify the tables and seeded quest rows.
+6. Implement and test wallet signature authentication before enabling persistent user progress.
+7. Test server authorization, ownership isolation, and that only trusted server code can create verified records.
+
+## Official references
+
+- [Neon connection guide](https://neon.com/docs/get-started/connect-neon)
+- [Drizzle with Neon](https://orm.drizzle.team/docs/connect-neon)
+- [Neon connection pooling](https://neon.com/docs/connect/connection-pooling)
