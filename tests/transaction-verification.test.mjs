@@ -55,3 +55,25 @@ test("returns one confirmation when latest and included blocks are equal", () =>
 test("returns null for a block height with a leading zero", () => {
   assert.equal(getConfirmationCount("0x010", "0x10"), null);
 });
+
+test("rejects missing receipt or transaction objects", () => {
+  assert.equal(hasConsistentTransactionEvidence(null, transaction, hash), false);
+  assert.equal(hasConsistentTransactionEvidence(receipt, undefined, hash), false);
+});
+
+test("rejects a malformed requested transaction hash", () => {
+  assert.equal(hasConsistentTransactionEvidence(receipt, transaction, "not-a-hash"), false);
+});
+
+test("rejects a missing requested transaction hash", () => {
+  assert.equal(hasConsistentTransactionEvidence(receipt, transaction, undefined), false);
+});
+
+test("rejects non-string block heights without throwing", () => {
+  assert.equal(getConfirmationCount(null, "0x10"), null);
+  assert.equal(getConfirmationCount("0x11", 16), null);
+});
+
+test("rejects a missing block height without throwing", () => {
+  assert.equal(getConfirmationCount(undefined, "0x10"), null);
+});
