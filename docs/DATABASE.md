@@ -23,6 +23,14 @@ The migration creates:
 - Client policies deliberately prevent users from setting a completion to `verified` or writing verification evidence.
 - Trusted server code must verify chain state and write verification records. Never put a Supabase secret or service role key in a browser bundle.
 
+## Current transaction verification prototype
+
+`POST /api/verify-transaction` checks a submitted transaction against Robinhood Chain testnet from the server. It confirms the configured RPC reports chain ID `46630`, the receipt succeeded, the transaction sender matches the submitted wallet address, and at least two confirmations exist.
+
+This proves public transaction facts only. It does not authenticate the person submitting the request, prove that the wallet belongs to an authenticated FlatQuest account, or establish that the transaction performed a particular quest action. The endpoint currently returns evidence but does not persist it. Add wallet signature authentication, request throttling, quest-specific transaction conditions, and trusted database writes before treating this as production completion verification.
+
+The optional `ROBINHOOD_TESTNET_RPC_URL` environment variable can point to a dedicated RPC provider. If unset, the endpoint uses the public Robinhood Chain testnet RPC.
+
 ## Wallet ownership
 
 A wallet address stored in `profiles` is not proof of ownership by itself. Before treating a wallet as linked, the server must verify a fresh signed challenge from that address, with domain, nonce, expiry and replay protection.
@@ -34,6 +42,7 @@ Set these in Vercel only after the dedicated Supabase project is provisioned:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_SECRET_KEY` (server only, never prefix with NEXT_PUBLIC)
+- `ROBINHOOD_TESTNET_RPC_URL` (optional server only)
 
 Do not add placeholder credentials. Keep the existing browser-only prototype functional until the real project credentials are available.
 
