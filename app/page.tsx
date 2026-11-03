@@ -80,22 +80,16 @@ export default function Home() {
     if (!/^0x([A-Fa-f0-9]{64})$/.test(hash.trim())) { setNotice("Enter a valid 32-byte transaction hash."); return; }
     setBusy(true); setNotice("");
     try {
-      const rpc = async (method: string, params: unknown[]) => {
-        const response = await fetch(RPC, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) });
-        if (!response.ok) throw new Error("RPC request failed");
-        const data = await response.json();
-        if (data.error) throw new Error(data.error.message || "RPC error");
-        return data.result;
-      };
-      const receipt = await rpc("eth_getTransactionReceipt", [hash.trim()]) as { status: string; blockNumber: string; from: string } | null;
-      if (!receipt) throw new Error("Transaction not found yet. Check the hash and try again.");
-      if (receipt.status !== "0x1") throw new Error("This transaction did not succeed.");
-      if (receipt.from.toLowerCase() !== account.toLowerCase()) throw new Error("The transaction sender does not match your connected wallet.");
-      const latest = BigInt(await rpc("eth_blockNumber", []) as string);
-      const included = BigInt(receipt.blockNumber);
-      const confirmations = Number(latest - included + 1n);
-      if (confirmations < 2) throw new Error("This transaction needs at least 2 confirmations. Try again shortly.");
-      save(3); setNotice("Transaction verified on Robinhood Chain testnet with " + confirmations + " confirmations.");
+      const response = await fetch("/api/verify-transaction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transactionHash: hash.trim(), walletAddress: account })
+      });
+      const result = await response.json() as { verified?: boolean; confirmations?: number; error?: string };
+      if (!response.ok || !result.verified) {
+        throw new Error(result.error || "Verification failed. Please try again.");
+      }
+      save(3); setNotice("Transaction verified by FlatQuest's server against Robinhood Chain testnet with " + result.confirmations + " confirmations.");
     } catch (error) { setNotice(error instanceof Error ? error.message : "Verification failed. Please try again."); }
     finally { setBusy(false); }
   }
