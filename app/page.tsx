@@ -142,7 +142,7 @@ export default function Home() {
   return <main>
     <nav className="nav shell">
       <a className="wordmark" href="#"><Mark/><span>flat<span className="wordmark-light">quest</span></span></a>
-      <div className="nav-links"><a href="#how-it-works">How it works</a><a href="#quests">Quests</a><a href="#about">Why FlatQuest</a></div>
+      <div className="nav-links"><a href="#how-it-works">How it works</a><a href="#quests">Quests</a><a href="#about">Why FlatQuest</a><Link href="/dashboard">My dashboard ↗</Link></div>
       <button className="connect-button" onClick={connect}>{account ? (authenticated ? account.slice(0, 6) + "..." + account.slice(-4) : "Verify wallet") : "Connect wallet"} <span>↗</span></button>
     </nav>
 
