@@ -24,22 +24,22 @@ type StepRow = {
 export default async function QuestGuide({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const db = getDb();
-  const questRows = await db<QuestRow[]>\`
+  const questRows = await db<QuestRow[]>`
     select slug, title, description, category, verification_type
     from public.quests
     where slug = ${slug} and is_published = true
     limit 1
-  \`;
+  `;
 
   const quest = questRows[0];
   if (!quest) notFound();
 
-  const steps = await db<StepRow[]>\`
+  const steps = await db<StepRow[]>`
     select id, title, instructions, resource_url, sort_order
     from public.quest_steps
     where quest_id = (select id from public.quests where slug = ${slug} limit 1)
     order by sort_order asc
-  \`;
+  `;
 
   const resource = steps.find((step) => step.resource_url)?.resource_url;
   const number = String(steps.length ? steps[0].sort_order : 1).padStart(2, "0");
