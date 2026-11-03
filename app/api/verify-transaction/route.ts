@@ -80,7 +80,6 @@ export async function POST(request: Request) {
         blockNumber: string;
         blockHash: string;
         transactionHash: string;
-        from: string;
       } | null>("eth_getTransactionReceipt", [transactionHash]),
       rpc<{
         from: string;
@@ -109,7 +108,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "This transaction did not succeed." }, { status: 422 });
     }
     if (
-      receipt.from.toLowerCase() !== walletAddress.toLowerCase() ||
       transaction.from.toLowerCase() !== walletAddress.toLowerCase()
     ) {
       return NextResponse.json({ error: "The transaction sender does not match your connected wallet." }, { status: 403 });
@@ -145,7 +143,7 @@ export async function POST(request: Request) {
       verificationMethod: "successful_receipt_sender_match_two_confirmations_with_block_consistency",
       verifiedAt: new Date().toISOString(),
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "The verification service or network provider is temporarily unavailable. Please try again." }, { status: 503 });
   }
 }
