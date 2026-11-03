@@ -49,10 +49,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const { transactionHash, walletAddress } = body as {
+  const { questId, transactionHash, walletAddress } = body as {
+    questId?: unknown;
     transactionHash?: unknown;
     walletAddress?: unknown;
   };
+
+  // This verifier intentionally supports only the generic successful-transaction quest.
+  // It does not claim that the transaction performed a specific contract action.
+  if (questId !== "prove-transaction") {
+    return NextResponse.json({ error: "This verification method is not enabled for that quest." }, { status: 400 });
+  }
 
   if (typeof transactionHash !== "string" || !HASH_PATTERN.test(transactionHash)) {
     return NextResponse.json({ error: "Enter a valid 32-byte transaction hash." }, { status: 400 });
@@ -124,6 +131,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       verified: true,
+      questId: "prove-transaction",
+      proofScope: "successful_wallet_transaction",
       chainId: 46630,
       transactionHash: receipt.transactionHash,
       walletAddress,
