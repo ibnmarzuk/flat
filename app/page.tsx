@@ -69,7 +69,7 @@ export default function Home() {
 
   const save = (id: number) => setCompleted((old) => { const next = [...new Set([...old, id])]; localStorage.setItem("flatquest-progress", JSON.stringify(next)); return next; });
   const progress = Math.round((completed.length / quests.length) * 100);
-  const filtered = useMemo(() => quests.filter((q) => filter === "All quests" || q.category === filter), [filter]);
+  const filtered = useMemo(() => quests.filter((q) => filter === "All quests" || q.category === filter), [filter, quests]);
 
   async function connect() {
     if (!window.ethereum) { setNotice("Install a browser wallet such as MetaMask to connect."); return; }
