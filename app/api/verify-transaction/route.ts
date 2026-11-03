@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getConfirmationCount, hasConsistentTransactionEvidence } from "@/lib/transaction-verification";
+import { getAuthenticatedWallet } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -70,6 +71,11 @@ export async function POST(request: Request) {
   }
 
   try {
+    const authenticatedWallet = await getAuthenticatedWallet(request.headers.get("cookie"));
+    if (!authenticatedWallet || authenticatedWallet.toLowerCase() !== walletAddress.toLowerCase()) {
+      return NextResponse.json({ error: "Sign in with the wallet that sent this transaction before submitting proof." }, { status: 401 });
+    }
+
     const chainId = await rpc<string>("eth_chainId", []);
     if (chainId.toLowerCase() !== EXPECTED_CHAIN_ID) {
       return NextResponse.json({ error: "The configured RPC is not Robinhood Chain testnet." }, { status: 503 });
@@ -122,6 +128,32 @@ export async function POST(request: Request) {
         confirmations,
       }, { status: 409 });
     }
+
+    const db = (await import("@/lib/db")).getDb();
+    await db.begin(async (tx) => {
+      const completionRows = await tx<{ id: string }[]>\`
+        insert into public.completions (wallet_address, quest_id, status, submitted_at, verified_at)
+        select ${walletAddress.toLowerCase()}, id, 'verified', now(), now()
+        from public.quests where slug = 'prove-transaction'
+        on conflict (wallet_address, quest_id) do update
+          set status = 'verified', submitted_at = coalesce(public.completions.submitted_at, now()),
+              verified_at = now(), updated_at = now()
+        returning id
+      \`;
+      const completion = completionRows[0];
+      if (!completion) throw new Error("Quest record unavailable.");
+      await tx\`
+        insert into public.verification_records
+          (completion_id, chain_id, wallet_address, transaction_hash, block_number, confirmations, verification_method, evidence, verified_at)
+        values (
+          ${completion.id}, 46630, ${walletAddress.toLowerCase()}, ${receipt.transactionHash},
+          ${Number(includedBlock)}, ${confirmations},
+          'successful_receipt_sender_match_two_confirmations_with_block_consistency',
+          ${JSON.stringify({ blockHash: receipt.blockHash, transactionTo: transaction.to, transactionValue: transaction.value, inputDataBytes: Math.max(0, (transaction.input.length - 2) / 2) })}::jsonb,
+          now()
+        )
+      \`;
+    });
 
     return NextResponse.json({
       verified: true,
