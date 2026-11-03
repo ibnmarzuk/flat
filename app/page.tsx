@@ -84,7 +84,7 @@ export default function Home() {
       const response = await fetch("/api/verify-transaction", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transactionHash: hash.trim(), walletAddress: account })
+        body: JSON.stringify({ questId: "prove-transaction", transactionHash: hash.trim(), walletAddress: account })
       });
       const result = await response.json() as { verified?: boolean; confirmations?: number; error?: string; transactionHash?: string; walletAddress?: string; blockNumber?: number; blockHash?: string; verifiedAt?: string; transactionTo?: string | null; transactionValue?: string; inputDataBytes?: number };
       if (!response.ok || !result.verified) {
