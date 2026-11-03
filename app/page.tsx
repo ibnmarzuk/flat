@@ -25,6 +25,7 @@ function Mark({ small = false }: { small?: boolean }) {
 export default function Home() {
   const [quests, setQuests] = useState<Quest[]>(initialQuests);
   const [account, setAccount] = useState("");
+  const [authenticated, setAuthenticated] = useState(false);
   const [chainId, setChainId] = useState("");
   const [completed, setCompleted] = useState<number[]>([]);
   const [filter, setFilter] = useState("All quests");
@@ -37,10 +38,18 @@ export default function Home() {
   useEffect(() => {
     fetch("/api/quests").then((response) => response.ok ? response.json() : Promise.reject(new Error("Quest API unavailable"))).then((data: { quests?: Quest[] }) => { if (Array.isArray(data.quests) && data.quests.length) setQuests(data.quests); }).catch(() => {});
     try { const savedProgress = JSON.parse(localStorage.getItem("flatquest-progress") || "[]"); const safeProgress = Array.isArray(savedProgress) ? savedProgress.filter((id): id is number => Number.isInteger(id) && id >= 1 && id <= 4) : []; setCompleted(safeProgress); setExplored(safeProgress.includes(4)); const savedEvidence = localStorage.getItem("flatquest-verification-evidence"); if (savedEvidence) setVerificationEvidence(JSON.parse(savedEvidence)); } catch {}
+    fetch("/api/auth/session", { cache: "no-store" }).then((response) => response.ok ? response.json() : Promise.reject()).then((session: { authenticated?: boolean; walletAddress?: string }) => {
+      if (session.authenticated && session.walletAddress) { setAccount(session.walletAddress); setAuthenticated(true); }
+    }).catch(() => {});
     if (window.ethereum) {
-      window.ethereum.request({ method: "eth_accounts" }).then((a) => { const list = a as string[]; if (list[0]) setAccount(list[0]); }).catch(() => {});
+      window.ethereum.request({ method: "eth_accounts" }).then((a) => { const list = a as string[]; if (list[0]) setAccount((current) => current || list[0]); }).catch(() => {});
       window.ethereum.request({ method: "eth_chainId" }).then((id) => setChainId(String(id))).catch(() => {});
-      const onAccounts = (...args: unknown[]) => setAccount(((args[0] as string[]) || [])[0] || "");
+      const onAccounts = (...args: unknown[]) => {
+        const next = ((args[0] as string[]) || [])[0] || "";
+        setAccount(next);
+        setAuthenticated(false);
+        fetch("/api/auth/session", { method: "DELETE" }).catch(() => {});
+      };
       const onChain = (...args: unknown[]) => setChainId(String(args[0] || ""));
       window.ethereum.on?.("accountsChanged", onAccounts);
       window.ethereum.on?.("chainChanged", onChain);
@@ -56,11 +65,29 @@ export default function Home() {
     if (!window.ethereum) { setNotice("Install a browser wallet such as MetaMask to connect."); return; }
     try {
       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
+      const address = accounts[0];
+      if (!address) { setNotice("No wallet account was returned."); return; }
       const id = await window.ethereum.request({ method: "eth_chainId" }) as string;
-      setAccount(accounts[0] || ""); setChainId(id);
-      if (accounts[0]) save(1);
-      setNotice("Wallet connected. Your wallet remains in your control.");
-    } catch { setNotice("Wallet connection was cancelled or unavailable."); }
+      setAccount(address); setChainId(id);
+      setNotice("Check your wallet and sign the FlatQuest sign in message. This is not a transaction.");
+      const challengeResponse = await fetch("/api/auth/nonce", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ address })
+      });
+      const challenge = await challengeResponse.json() as { nonce?: string; message?: string; error?: string };
+      if (!challengeResponse.ok || !challenge.nonce || !challenge.message) throw new Error(challenge.error || "Could not create a sign in request.");
+      const signature = await window.ethereum.request({ method: "personal_sign", params: [challenge.message, address] }) as string;
+      const verifyResponse = await fetch("/api/auth/verify", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address, nonce: challenge.nonce, signature })
+      });
+      const result = await verifyResponse.json() as { authenticated?: boolean; error?: string };
+      if (!verifyResponse.ok || !result.authenticated) throw new Error(result.error || "Wallet sign in failed.");
+      setAuthenticated(true);
+      setNotice("Wallet ownership verified. Your FlatQuest account is ready.");
+    } catch (error) {
+      setAuthenticated(false);
+      setNotice(error instanceof Error ? error.message : "Wallet connection or sign in was cancelled.");
+    }
   }
 
   async function switchNetwork() {
@@ -105,7 +132,7 @@ export default function Home() {
     <nav className="nav shell">
       <a className="wordmark" href="#"><Mark/><span>flat<span className="wordmark-light">quest</span></span></a>
       <div className="nav-links"><a href="#how-it-works">How it works</a><a href="#quests">Quests</a><a href="#about">Why FlatQuest</a></div>
-      <button className="connect-button" onClick={connect}>{account ? account.slice(0, 6) + "..." + account.slice(-4) : "Connect wallet"} <span>↗</span></button>
+      <button className="connect-button" onClick={connect}>{account ? (authenticated ? account.slice(0, 6) + "..." + account.slice(-4) : "Verify wallet") : "Connect wallet"} <span>↗</span></button>
     </nav>
 
     <section className="hero shell">
