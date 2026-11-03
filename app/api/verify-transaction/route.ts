@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getConfirmationCount, hasConsistentTransactionEvidence } from "@/lib/transaction-verification";
+import { getConfirmationCount, hasConsistentTransactionEvidence, hasMinimumConfirmations, isExpectedChainId, isSuccessfulReceipt, isTransactionSender } from "@/lib/transaction-verification";
 import { getAuthenticatedWallet } from "@/lib/auth";
 import { consumeWalletRateLimit } from "@/lib/rate-limit";
 
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
     if (!rate.allowed) return NextResponse.json({ error: "Too many proof checks. Try again later." }, { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds) } });
 
     const chainId = await rpc<string>("eth_chainId", []);
-    if (chainId.toLowerCase() !== EXPECTED_CHAIN_ID) {
+    if (!isExpectedChainId(chainId, EXPECTED_CHAIN_ID)) {
       return NextResponse.json({ error: "The configured RPC is not Robinhood Chain testnet." }, { status: 503 });
     }
 
@@ -110,11 +110,11 @@ export async function POST(request: Request) {
     if (!hasConsistentTransactionEvidence(receipt, transaction, transactionHash)) {
       return NextResponse.json({ error: "The network returned inconsistent transaction evidence. Try again." }, { status: 503 });
     }
-    if (receipt.status !== "0x1") {
+    if (!isSuccessfulReceipt(receipt.status)) {
       return NextResponse.json({ error: "This transaction did not succeed." }, { status: 422 });
     }
     if (
-      transaction.from.toLowerCase() !== walletAddress.toLowerCase()
+      !isTransactionSender(transaction.from, walletAddress)
     ) {
       return NextResponse.json({ error: "The transaction sender does not match your connected wallet." }, { status: 403 });
     }
@@ -126,7 +126,7 @@ export async function POST(request: Request) {
 
     const includedBlock = BigInt(receipt.blockNumber);
     const confirmations = Number(confirmationCount);
-    if (confirmations < 2) {
+    if (!hasMinimumConfirmations(confirmationCount, 2n)) {
       return NextResponse.json({
         error: "This transaction needs at least 2 confirmations. Try again shortly.",
         confirmations,
