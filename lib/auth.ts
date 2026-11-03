@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { getDb } from "@/lib/db";
 
 export const SESSION_COOKIE = "flatquest_session";
@@ -56,9 +56,4 @@ Chain ID: 46630
 Nonce: ${input.nonce}
 Issued At: ${input.issuedAt}
 Expiration Time: ${input.expirationTime}`;
-}
-
-export function safeEqualHex(a: string, b: string) {
-  if (!/^[0-9a-f]{64}$/.test(a) || !/^[0-9a-f]{64}$/.test(b)) return false;
-  return timingSafeEqual(Buffer.from(a, "hex"), Buffer.from(b, "hex"));
 }
