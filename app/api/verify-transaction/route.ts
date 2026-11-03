@@ -130,6 +130,7 @@ export async function POST(request: Request) {
     }
 
     const db = (await import("@/lib/db")).getDb();
+    const normalizedTransactionHash = receipt.transactionHash.toLowerCase();
     await db.begin(async (tx) => {
       const completionRows = await tx<{ id: string }[]>`
         insert into public.completions (wallet_address, quest_id, status, submitted_at, verified_at)
@@ -146,12 +147,20 @@ export async function POST(request: Request) {
         insert into public.verification_records
           (completion_id, chain_id, wallet_address, transaction_hash, block_number, confirmations, verification_method, evidence, verified_at)
         values (
-          ${completion.id}, 46630, ${walletAddress.toLowerCase()}, ${receipt.transactionHash},
+          ${completion.id}, 46630, ${walletAddress.toLowerCase()}, ${normalizedTransactionHash},
           ${Number(includedBlock)}, ${confirmations},
           'successful_receipt_sender_match_two_confirmations_with_block_consistency',
           ${JSON.stringify({ blockHash: receipt.blockHash, transactionTo: transaction.to, transactionValue: transaction.value, inputDataBytes: Math.max(0, (transaction.input.length - 2) / 2) })}::jsonb,
           now()
         )
+        on conflict (chain_id, lower(transaction_hash)) where transaction_hash is not null do update
+          set completion_id = excluded.completion_id,
+              wallet_address = excluded.wallet_address,
+              block_number = excluded.block_number,
+              confirmations = excluded.confirmations,
+              verification_method = excluded.verification_method,
+              evidence = excluded.evidence,
+              verified_at = now()
       `;
     });
 
