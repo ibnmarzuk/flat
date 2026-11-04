@@ -3,11 +3,10 @@ import { randomBytes } from "node:crypto";
 import { getDb } from "@/lib/db";
 import { buildWalletSignInMessage } from "@/lib/auth";
 import { consumeWalletRateLimit } from "@/lib/rate-limit";
+import { isValidWalletAddress } from "@/lib/wallet-auth-policy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const ADDRESS = /^0x[a-fA-F0-9]{40}$/;
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -20,7 +19,7 @@ export async function POST(request: Request) {
   }
 
   const address = body && typeof body === "object" ? (body as { address?: unknown }).address : null;
-  if (typeof address !== "string" || !ADDRESS.test(address)) {
+  if (!isValidWalletAddress(address)) {
     return NextResponse.json({ error: "Enter a valid wallet address." }, { status: 400 });
   }
 
