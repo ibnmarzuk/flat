@@ -1,57 +1,62 @@
 # FlatQuest database setup
 
-## Provider
+## Provider and connection
 
-FlatQuest uses a dedicated Neon Postgres database. It does not depend on Supabase. Neon provides managed PostgreSQL; the application connects from trusted server code only.
+FlatQuest uses a dedicated Neon Postgres database. It does not depend on Supabase. The application connects from trusted server code through the `postgres` client.
 
-## Connection variables
+Configure the following server environment variables in Vercel:
 
-Set these in Vercel after creating the Neon project:
+- `DATABASE_URL`: Neon pooled connection string used for runtime queries.
+- `DATABASE_URL_UNPOOLED`: direct connection string for administrative migration workflows where required.
 
-- `DATABASE_URL`: Neon pooled connection string for runtime queries. Keep the hostname's `-pooler` suffix.
-- `DATABASE_URL_UNPOOLED`: Neon direct connection string for schema migrations and Drizzle Kit.
-
-Both values are secrets. Never prefix them with `NEXT_PUBLIC_`, commit them, paste them into source code, or expose them to browser code. Neon connection strings are available from the Connect modal in the Neon Console. Keep SSL enabled.
+Treat both values as secrets. Never prefix them with `NEXT_PUBLIC_`, commit them, or expose them to browser code. Keep SSL enabled.
 
 ## Schema
 
-Apply `drizzle/0000_flatquest_init.sql` to the dedicated Neon database. It creates:
+The SQL migrations in `drizzle/` define the application schema and incremental changes. The current application uses:
 
-- `quests` and `quest_steps` for published onboarding content
-- `profiles` keyed by normalized wallet address
-- `completions` for wallet-owned quest progress
-- `verification_records` for server-written verification evidence
+- `quests` and `quest_steps` for quest content and guided steps.
+- `profiles` for normalized wallet profiles.
+- `completions` for wallet-owned quest progress and status.
+- `verification_records` for server-written onchain evidence.
+- `wallet_auth_challenges` for short-lived, single-use sign-in nonces.
+- `wallet_sessions` for hashed session tokens and expiry/revocation.
+- `api_rate_limits` for atomic persistent rate-limit counters.
 
-The schema is provider-neutral PostgreSQL. The migration seeds the initial four quests and their guided steps.
+The initial migration seeds the four starter quests. Later migrations add transaction idempotency and persistent rate limiting. Apply migrations in numerical order to a dedicated database and verify the resulting schema before deploying application code that depends on them.
 
 ## Security model
 
-Neon is a database service, not a complete authentication product. There is no Supabase Auth or automatic RLS policy layer in this architecture. The app must access the database only from server routes and server-only modules. Do not create a browser database client.
+Neon is the database, not the authentication layer. The application accesses it from server routes and server-only modules. Do not create a browser database client.
 
-Before accepting a wallet as a user identity, implement a signed challenge flow with a cryptographically random nonce, domain binding, expiry, signature verification, and durable one-time nonce consumption. A connected wallet address alone is not authentication.
+Wallet sign-in uses a cryptographically random nonce, an origin/domain-bound sign-in message, an expiry, EIP-191 signature verification, and one-time nonce consumption. The server stores a hash of the session token and sets the raw token only in an HTTP-only cookie. Sessions expire and can be revoked.
 
-All completion writes must validate the authenticated wallet against the session on the server. Clients must never be allowed to set `verified`, write `verified_at`, or insert verification records. Those operations belong to trusted verification code after checking chain evidence. Keep admin credentials and database connection strings server only. Use parameterized queries or a typed ORM, never concatenate user input into SQL.
+All progress writes are checked against the authenticated wallet on the server. Client requests cannot directly create verified evidence. Use parameterized SQL and keep database credentials server-side.
 
-## Current transaction verification prototype
+Persistent rate limits use atomic Postgres upserts and wallet-scoped keys. Current limits are five nonce requests per wallet per ten minutes, ten signature verification requests per wallet per ten minutes, and ten transaction verification requests per wallet per hour.
 
-`POST /api/verify-transaction` accepts only the `prove-transaction` quest ID and checks a submitted transaction against Robinhood Chain testnet from the server. Its proof scope is explicitly `successful_wallet_transaction`: it verifies a successful transaction sent by the submitted address, not a particular contract interaction or ecosystem task. It confirms the configured RPC reports chain ID `46630`, the receipt succeeded, the transaction sender matches the submitted wallet address, the receipt and transaction hashes match the requested hash, the included block hash and number agree across both RPC responses, and at least two confirmations exist.
+## Transaction verification scope
 
-This proves public transaction facts only. It does not authenticate the person submitting the request, prove wallet ownership, or persist evidence. The endpoint rejects request bodies larger than 2 KB. This is input hardening, not rate limiting. Add wallet signature authentication, durable request throttling, quest-specific transaction conditions, and trusted database writes before treating this as production completion verification.
+`POST /api/verify-transaction` accepts only the `prove-transaction` quest. It requires an authenticated session matching the submitted wallet and checks Robinhood Chain testnet (chain ID `46630`). The server verifies transaction/receipt consistency, successful receipt status, sender-wallet match, consistent block evidence, and at least two confirmations. Evidence is written to `completions` and `verification_records` in one database transaction.
 
-The optional `ROBINHOOD_TESTNET_RPC_URL` environment variable can point to a dedicated RPC provider. If unset, the endpoint uses the public Robinhood Chain testnet RPC.
+The proof scope is deliberately limited to `successful_wallet_transaction`: a successful transaction sent by the authenticated wallet. It does not prove a particular contract interaction, token purchase, or ecosystem task. Do not describe this generic proof as completion of a specific external action.
 
-## Apply and verify
+The verifier rejects request bodies larger than 2 KB and uses a configurable `ROBINHOOD_TESTNET_RPC_URL`. If that variable is absent, it uses the public Robinhood Chain testnet RPC. Verification depends on the accuracy and availability of the configured RPC provider.
 
-1. Create a dedicated Neon project and database.
-2. Copy both pooled and direct connection strings from Neon's Connect modal.
-3. Configure the two server environment variables in Vercel.
-4. Apply `drizzle/0000_flatquest_init.sql` using the direct connection.
-5. Verify the tables and seeded quest rows.
-6. Implement and test wallet signature authentication before enabling persistent user progress.
-7. Test server authorization, ownership isolation, and that only trusted server code can create verified records.
+A unique partial index on `(chain_id, lower(transaction_hash))` makes repeated submissions of the same chain transaction idempotent at the evidence-record level.
+
+## Operational guidance
+
+- Keep all database access server-side.
+- Use parameterized SQL for every user-controlled value.
+- Never allow browser code to write `verified`, `verified_at`, or verification records.
+- Keep authentication and verification rate limits enabled.
+- Review migrations before applying them to production.
+- Do not run destructive schema or data changes without explicit approval.
+- Test wallet sign-in and the complete transaction proof flow in a real browser wallet before presenting the product as fully validated.
 
 ## Official references
 
 - [Neon connection guide](https://neon.com/docs/get-started/connect-neon)
-- [Drizzle with Neon](https://orm.drizzle.team/docs/connect-neon)
 - [Neon connection pooling](https://neon.com/docs/connect/connection-pooling)
+- [Viem signature verification](https://viem.sh/docs/utilities/verifyMessage)
