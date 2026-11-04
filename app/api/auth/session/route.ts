@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getDb } from "@/lib/db";
 import { hashToken, SESSION_COOKIE } from "@/lib/auth";
+import { isValidSessionToken } from "@/lib/wallet-auth-policy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
-  if (!token || !/^[0-9a-f]{64}$/.test(token)) {
+  if (!isValidSessionToken(token)) {
     return NextResponse.json({ authenticated: false }, { headers: { "Cache-Control": "no-store" } });
   }
   try {
@@ -34,7 +35,7 @@ export async function GET() {
 export async function DELETE() {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
-  if (token && /^[0-9a-f]{64}$/.test(token)) {
+  if (isValidSessionToken(token)) {
     try {
       const db = getDb();
       await db`
