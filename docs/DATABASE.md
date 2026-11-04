@@ -23,7 +23,7 @@ The SQL migrations in `drizzle/` define the application schema and incremental c
 - `wallet_sessions` for hashed session tokens and expiry/revocation.
 - `api_rate_limits` for atomic persistent rate-limit counters.
 
-The initial migration seeds the four starter quests. Later migrations add transaction idempotency and persistent rate limiting. Apply migrations in numerical order to a dedicated database and verify the resulting schema before deploying application code that depends on them.
+The initial migration seeds the four starter quests. Later migrations add transaction idempotency, persistent rate limiting, and an index supporting bounded rate-limit retention. Apply migrations in numerical order to a dedicated database and verify the resulting schema before deploying application code that depends on them.
 
 ## Security model
 
@@ -33,7 +33,18 @@ Wallet sign-in uses a cryptographically random nonce, an origin/domain-bound sig
 
 All progress writes are checked against the authenticated wallet on the server. Client requests cannot directly create verified evidence. Use parameterized SQL and keep database credentials server-side.
 
-Persistent rate limits use atomic Postgres upserts and wallet-scoped keys. Current limits are five nonce requests per wallet per ten minutes, ten signature verification requests per wallet per ten minutes, and ten transaction verification requests per wallet per hour.
+Persistent rate limits use atomic Postgres upserts and wallet-scoped keys. Current limits are five nonce requests per wallet per ten minutes, ten signature verification requests per wallet per ten minutes, and ten transaction verification requests per wallet per hour. Wallet-scoped limits are not a complete abuse barrier because unauthenticated clients can rotate wallet addresses. Do not trust arbitrary client-supplied forwarding headers as an IP identity. Add an edge or platform-enforced request limit using a verified source identity before treating this as robust abuse protection.
+
+## Retention and cleanup
+
+Authentication lookups already have indexes supporting expiry searches on wallet challenges and sessions. The rate-limit table has an `updated_at` index from migration `0003` to support bounded cleanup queries.
+
+The application does not currently run automatic database cleanup. A future scheduled maintenance job should delete only:
+- challenges whose `expires_at` is older than a conservative retention window, including both consumed and unconsumed challenges;
+- sessions whose `expires_at` is older than a conservative retention window, or which were revoked sufficiently long ago;
+- rate-limit rows whose `updated_at` is older than the chosen retention window.
+
+Cleanup must be batched, run with a least-privilege database role where practical, and never remove an unexpired challenge or unexpired, unrevoked session. Do not expose cleanup through an unauthenticated application route. Retention periods and scheduling should be selected before enabling a production cleanup job.
 
 ## Transaction verification scope
 
