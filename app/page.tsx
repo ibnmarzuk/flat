@@ -113,7 +113,22 @@ export default function Home() {
     }
     const id = await window.ethereum.request({ method: "eth_chainId" }) as string;
     setChainId(id);
-    if (id.toLowerCase() === CHAIN_ID.toLowerCase()) { setNotice("Robinhood Chain testnet detected. This prototype does not yet treat a client-side network switch as verified completion."); }
+    if (id.toLowerCase() === CHAIN_ID.toLowerCase()) {
+      if (!authenticated) {
+        setNotice("Robinhood Chain testnet detected. Sign in with your wallet to save this milestone.");
+        return;
+      }
+      const response = await fetch("/api/verify-network", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chainId: id })
+      });
+      const result = await response.json() as { verified?: boolean; error?: string };
+      if (!response.ok || !result.verified) throw new Error(result.error || "Network verification failed.");
+      save(2);
+      await loadPersistentProgress();
+      setNotice("Robinhood Chain testnet verified. This milestone is saved to your FlatQuest account.");
+    }
   }
 
   async function verifyTransaction() {
