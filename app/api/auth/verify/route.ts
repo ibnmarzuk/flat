@@ -10,6 +10,8 @@ export const dynamic = "force-dynamic";
 
 const SESSION_SECONDS = 60 * 60 * 24 * 30;
 
+class ChallengeAlreadyConsumedError extends Error {}
+
 export async function POST(request: Request) {
   let body: unknown;
   try {
@@ -77,7 +79,7 @@ export async function POST(request: Request) {
           and expires_at > now()
         returning wallet_address
       `;
-      if (consumed.length !== 1) throw new Error("Challenge already consumed.");
+      if (consumed.length !== 1) throw new ChallengeAlreadyConsumedError("Challenge already consumed.");
 
       await tx`
         insert into public.profiles (wallet_address)
@@ -104,7 +106,10 @@ export async function POST(request: Request) {
     }, { headers: { "Cache-Control": "no-store" } });
     response.cookies.set(SESSION_COOKIE, sessionToken, getSessionCookieOptions());
     return response;
-  } catch {
+  } catch (error) {
+    if (error instanceof ChallengeAlreadyConsumedError) {
+      return NextResponse.json({ error: "This sign in request has already been used. Request a new challenge." }, { status: 401 });
+    }
     return NextResponse.json({ error: "Wallet sign in failed. Please request a new challenge." }, { status: 503 });
   }
 }
