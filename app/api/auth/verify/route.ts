@@ -3,13 +3,11 @@ import { verifyMessage, type Address, type Hex } from "viem";
 import { getDb } from "@/lib/db";
 import { buildWalletSignInMessage, createSessionToken, getSessionCookieOptions, hashToken, SESSION_COOKIE } from "@/lib/auth";
 import { consumeWalletRateLimit } from "@/lib/rate-limit";
+import { isValidWalletAddress, isValidWalletNonce, isValidWalletSignature } from "@/lib/wallet-auth-policy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const ADDRESS = /^0x[a-fA-F0-9]{40}$/;
-const NONCE = /^[0-9a-f]{32}$/;
-const SIGNATURE = /^0x[a-fA-F0-9]{130}$/;
 const SESSION_SECONDS = 60 * 60 * 24 * 30;
 
 export async function POST(request: Request) {
@@ -23,9 +21,9 @@ export async function POST(request: Request) {
   }
 
   const input = body as { address?: unknown; nonce?: unknown; signature?: unknown } | null;
-  if (!input || typeof input.address !== "string" || !ADDRESS.test(input.address) ||
-      typeof input.nonce !== "string" || !NONCE.test(input.nonce) ||
-      typeof input.signature !== "string" || !SIGNATURE.test(input.signature)) {
+  if (!input || !isValidWalletAddress(input.address) ||
+      !isValidWalletNonce(input.nonce) ||
+      !isValidWalletSignature(input.signature)) {
     return NextResponse.json({ error: "Invalid wallet sign in request." }, { status: 400 });
   }
 
