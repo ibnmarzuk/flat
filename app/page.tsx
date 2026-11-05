@@ -4,8 +4,30 @@ import Link from "next/link";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+type WalletProvider = { request: (args: { method: string; params?: unknown[] }) => Promise<unknown>; on?: (event: string, cb: (...args: unknown[]) => void) => void; removeListener?: (event: string, cb: (...args: unknown[]) => void) => void; isMetaMask?: boolean };
 declare global {
-  interface Window { ethereum?: { request: (args: { method: string; params?: unknown[] }) => Promise<unknown>; on?: (event: string, cb: (...args: unknown[]) => void) => void; removeListener?: (event: string, cb: (...args: unknown[]) => void) => void } }
+  interface Window { ethereum?: WalletProvider & { providers?: WalletProvider[] } }
+}
+
+async function discoverWalletProvider(): Promise<WalletProvider | null> {
+  if (typeof window === "undefined") return null;
+  if (window.ethereum) return window.ethereum.providers?.find((item) => item.isMetaMask) || window.ethereum;
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (provider: WalletProvider | null) => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener("eip6963:announceProvider", onAnnounce);
+      resolve(provider);
+    };
+    const onAnnounce = (event: Event) => {
+      const detail = (event as CustomEvent<{ provider?: WalletProvider }>).detail;
+      if (detail?.provider) finish(detail.provider);
+    };
+    window.addEventListener("eip6963:announceProvider", onAnnounce);
+    window.dispatchEvent(new Event("eip6963:requestProvider"));
+    window.setTimeout(() => finish(window.ethereum || null), 800);
+  });
 }
 
 const CHAIN_ID = "0xB626"; // Robinhood Chain testnet, 46630
@@ -32,6 +54,8 @@ export default function Home() {
   const [hash, setHash] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [walletProvider, setWalletProvider] = useState<WalletProvider | null>(null);
   const [explored, setExplored] = useState(false);
   const [verificationEvidence, setVerificationEvidence] = useState<{ transactionHash: string; walletAddress: string; blockNumber: number; blockHash: string; transactionTo: string | null; transactionValue: string; inputDataBytes: number; confirmations: number; verifiedAt: string } | null>(null);
 
@@ -72,12 +96,17 @@ export default function Home() {
   const filtered = useMemo(() => quests.filter((q) => filter === "All quests" || q.category === filter), [filter, quests]);
 
   async function connect() {
-    if (!window.ethereum) { setNotice("Install a browser wallet such as MetaMask to connect."); return; }
+    if (connecting) return;
+    setConnecting(true);
+    setNotice("Looking for an installed browser wallet...");
     try {
-      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
+      const provider = walletProvider || await discoverWalletProvider();
+      if (!provider) throw new Error("No browser wallet was detected. Install or unlock MetaMask, then refresh FlatQuest.");
+      setWalletProvider(provider);
+      const accounts = await provider.request({ method: "eth_requestAccounts" }) as string[];
       const address = accounts[0];
       if (!address) { setNotice("No wallet account was returned."); return; }
-      const id = await window.ethereum.request({ method: "eth_chainId" }) as string;
+      const id = await provider.request({ method: "eth_chainId" }) as string;
       setAccount(address); setChainId(id);
       setNotice("Check your wallet and sign the FlatQuest sign in message. This is not a transaction.");
       const challengeResponse = await fetch("/api/auth/nonce", {
@@ -85,7 +114,7 @@ export default function Home() {
       });
       const challenge = await challengeResponse.json() as { nonce?: string; message?: string; error?: string };
       if (!challengeResponse.ok || !challenge.nonce || !challenge.message) throw new Error(challenge.error || "Could not create a sign in request.");
-      const signature = await window.ethereum.request({ method: "personal_sign", params: [challenge.message, address] }) as string;
+      const signature = await provider.request({ method: "personal_sign", params: [challenge.message, address] }) as string;
       const verifyResponse = await fetch("/api/auth/verify", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ address, nonce: challenge.nonce, signature })
@@ -97,21 +126,27 @@ export default function Home() {
       setNotice("Wallet ownership verified. Your FlatQuest account is ready.");
     } catch (error) {
       setAuthenticated(false);
-      setNotice(error instanceof Error ? error.message : "Wallet connection or sign in was cancelled.");
+      const code = (error as { code?: number }).code;
+      if (code === 4001) setNotice("Wallet request was rejected. Click Connect wallet when you are ready to approve it.");
+      else if (code === -32002) setNotice("A wallet request is already pending. Open your wallet extension and complete or cancel it.");
+      else setNotice(error instanceof Error ? error.message : "Wallet connection or sign in failed.");
+    } finally {
+      setConnecting(false);
     }
   }
 
   async function switchNetwork() {
-    if (!window.ethereum) { setNotice("Connect a browser wallet first."); return; }
+    const provider = walletProvider || await discoverWalletProvider();
+    if (!provider) { setNotice("No browser wallet detected. Install or unlock MetaMask first."); return; }
     try {
-      await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: CHAIN_ID }] });
+      await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: CHAIN_ID }] });
     } catch (error) {
       const code = (error as { code?: number }).code;
       if (code === 4902) {
-        await window.ethereum.request({ method: "wallet_addEthereumChain", params: [{ chainId: CHAIN_ID, chainName: "Robinhood Chain Testnet", nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: [RPC], blockExplorerUrls: ["https://explorer.testnet.chain.robinhood.com/"] }] });
+        await provider.request({ method: "wallet_addEthereumChain", params: [{ chainId: CHAIN_ID, chainName: "Robinhood Chain Testnet", nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: [RPC], blockExplorerUrls: ["https://explorer.testnet.chain.robinhood.com/"] }] });
       } else { setNotice("Network switch was cancelled."); return; }
     }
-    const id = await window.ethereum.request({ method: "eth_chainId" }) as string;
+    const id = await provider.request({ method: "eth_chainId" }) as string;
     setChainId(id);
     if (id.toLowerCase() === CHAIN_ID.toLowerCase()) {
       if (!authenticated) {
@@ -158,7 +193,7 @@ export default function Home() {
     <nav className="nav shell">
       <a className="wordmark" href="#"><Mark/><span>flat<span className="wordmark-light">quest</span></span></a>
       <div className="nav-links"><a href="#how-it-works">How it works</a><a href="#quests">Quests</a><a href="#about">Why FlatQuest</a><Link href="/dashboard">My dashboard ↗</Link></div>
-      <button className="connect-button" onClick={connect}>{account ? (authenticated ? account.slice(0, 6) + "..." + account.slice(-4) : "Verify wallet") : "Connect wallet"} <span>↗</span></button>
+      <button className="connect-button" onClick={connect} disabled={connecting} aria-busy={connecting}>{connecting ? "Connecting..." : account ? (authenticated ? account.slice(0, 6) + "..." + account.slice(-4) : "Verify wallet") : "Connect wallet"} <span>{connecting ? "…" : "↗"}</span></button>
     </nav>
 
     <section className="hero shell">
@@ -196,7 +231,7 @@ export default function Home() {
         {filtered.map((q) => <article className="quest-card" key={q.id}><div className="quest-card-top"><span className="quest-index">0{q.id}</span><span className="quest-category">{q.category}</span><span className={completed.includes(q.id) ? "status complete" : "status"}>{completed.includes(q.id) ? q.id === 3 && verificationEvidence ? "✓ Onchain verified" : q.id === 4 ? "✓ Self reported" : q.id === 1 && authenticated ? "✓ Wallet verified" : "✓ Recorded locally" : "○ Available"}</span></div><h4>{q.title}</h4><p>{q.description}</p><Link className="quest-guide-link" href={`/quests/${q.slug}`}>Read quest guide ↗</Link>
           {q.type === "transaction" && <div className="verify-field"><input value={hash} onChange={(e) => setHash(e.target.value)} placeholder="Paste transaction hash (0x…)" aria-label="Transaction hash"/><button onClick={verifyTransaction} disabled={busy}>{busy ? "Checking..." : "Verify proof"}</button></div>}
           {q.type === "explore" && <div className="explore-action"><button onClick={() => { setExplored(!explored); if (!explored) { save(4); if (authenticated) fetch("/api/progress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ questSlug: "explore-ecosystem", status: "submitted" }) }).then((response) => { if (!response.ok) throw new Error("Could not save progress"); setNotice("Explorer milestone saved to your FlatQuest account as a self-reported step."); }).catch(() => setNotice("Explorer milestone is recorded on this device only. Sign in and try again to sync it.")); else setNotice("Explorer milestone recorded on this device. Sign in to sync it to your account."); } }}>{explored ? "Explored ✓" : "I explored the ecosystem"}</button><a href="https://worldisflat.fun/" target="_blank" rel="noreferrer">Open World Is Flat ↗</a></div>}
-          {q.type === "wallet" && <button className="quest-action" onClick={connect}>{account ? "Wallet connected ✓" : "Connect wallet ↗"}</button>}
+          {q.type === "wallet" && <button className="quest-action" onClick={connect} disabled={connecting}>{connecting ? "Connecting..." : account && authenticated ? "Wallet verified ✓" : account ? "Verify wallet ↗" : "Connect wallet ↗"}</button>}
           {q.type === "network" && <button className="quest-action" onClick={switchNetwork}>{chainId.toLowerCase() === CHAIN_ID.toLowerCase() ? "Robinhood Chain testnet ✓" : "Switch to testnet ↗"}</button>}
         </article>)}
         {verificationEvidence && <section className="evidence-card" aria-label="Transaction verification evidence"><div className="evidence-heading"><span className="evidence-badge">✓</span><div><strong>Transaction receipt verified</strong><small>ROBINHOOD CHAIN TESTNET · 46630</small></div></div><div className="evidence-grid"><div><small>TRANSACTION</small><a href={"https://explorer.testnet.chain.robinhood.com/tx/" + verificationEvidence.transactionHash} target="_blank" rel="noreferrer">{verificationEvidence.transactionHash.slice(0, 10)}…{verificationEvidence.transactionHash.slice(-8)} ↗</a></div><div><small>BLOCK</small><strong>{verificationEvidence.blockNumber.toLocaleString()}</strong></div><div><small>CONFIRMATIONS</small><strong>{verificationEvidence.confirmations}</strong></div><div><small>WALLET</small><strong>{verificationEvidence.walletAddress.slice(0, 8)}…{verificationEvidence.walletAddress.slice(-6)}</strong></div><div><small>RECIPIENT</small><strong>{verificationEvidence.transactionTo ? verificationEvidence.transactionTo.slice(0, 8) + "…" + verificationEvidence.transactionTo.slice(-6) : "Contract creation"}</strong></div><div><small>INPUT DATA</small><strong>{verificationEvidence.inputDataBytes} bytes</strong></div></div><p>Receipt evidence is saved to your FlatQuest account. This check confirms a successful transaction from your authenticated wallet. It does not prove a specific contract interaction or a particular ecosystem task.</p></section>}
