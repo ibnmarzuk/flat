@@ -55,9 +55,23 @@ export default function Home() {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [authRetryAt, setAuthRetryAt] = useState(0);
+  const [retrySeconds, setRetrySeconds] = useState(0);
   const [walletProvider, setWalletProvider] = useState<WalletProvider | null>(null);
   const [explored, setExplored] = useState(false);
   const [verificationEvidence, setVerificationEvidence] = useState<{ transactionHash: string; walletAddress: string; blockNumber: number; blockHash: string; transactionTo: string | null; transactionValue: string; inputDataBytes: number; confirmations: number; verifiedAt: string } | null>(null);
+
+  useEffect(() => {
+    if (!authRetryAt) { setRetrySeconds(0); return; }
+    const update = () => {
+      const remaining = Math.max(0, Math.ceil((authRetryAt - Date.now()) / 1000));
+      setRetrySeconds(remaining);
+      if (remaining === 0) setAuthRetryAt(0);
+    };
+    update();
+    const timer = window.setInterval(update, 1000);
+    return () => window.clearInterval(timer);
+  }, [authRetryAt]);
 
   const loadPersistentProgress = useCallback(async () => {
     try {
@@ -96,7 +110,7 @@ export default function Home() {
   const filtered = useMemo(() => quests.filter((q) => filter === "All quests" || q.category === filter), [filter, quests]);
 
   async function connect() {
-    if (connecting) return;
+    if (connecting || retrySeconds > 0) return;
     setConnecting(true);
     setNotice("Looking for an installed browser wallet...");
     try {
@@ -108,11 +122,26 @@ export default function Home() {
       if (!address) { setNotice("No wallet account was returned."); return; }
       const id = await provider.request({ method: "eth_chainId" }) as string;
       setAccount(address); setChainId(id);
+      const existingSessionResponse = await fetch("/api/auth/session", { cache: "no-store" });
+      if (existingSessionResponse.ok) {
+        const existingSession = await existingSessionResponse.json() as { authenticated?: boolean; walletAddress?: string };
+        if (existingSession.authenticated && existingSession.walletAddress?.toLowerCase() === address.toLowerCase()) {
+          setAuthenticated(true);
+          await loadPersistentProgress();
+          setNotice("Your wallet session is already verified. No new signature is needed.");
+          return;
+        }
+      }
       setNotice("Check your wallet and sign the FlatQuest sign in message. This is not a transaction.");
       const challengeResponse = await fetch("/api/auth/nonce", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ address })
       });
       const challenge = await challengeResponse.json() as { nonce?: string; message?: string; error?: string };
+      if (challengeResponse.status === 429) {
+        const retryAfter = Math.max(1, Number(challengeResponse.headers.get("Retry-After")) || 600);
+        setAuthRetryAt(Date.now() + retryAfter * 1000);
+        throw new Error("Too many sign in requests. FlatQuest will enable retry when the cooldown ends.");
+      }
       if (!challengeResponse.ok || !challenge.nonce || !challenge.message) throw new Error(challenge.error || "Could not create a sign in request.");
       const signature = await provider.request({ method: "personal_sign", params: [challenge.message, address] }) as string;
       const verifyResponse = await fetch("/api/auth/verify", {
@@ -120,6 +149,11 @@ export default function Home() {
         body: JSON.stringify({ address, nonce: challenge.nonce, signature })
       });
       const result = await verifyResponse.json() as { authenticated?: boolean; error?: string };
+      if (verifyResponse.status === 429) {
+        const retryAfter = Math.max(1, Number(verifyResponse.headers.get("Retry-After")) || 600);
+        setAuthRetryAt(Date.now() + retryAfter * 1000);
+        throw new Error("Too many sign in attempts. FlatQuest will enable retry when the cooldown ends.");
+      }
       if (!verifyResponse.ok || !result.authenticated) throw new Error(result.error || "Wallet sign in failed.");
       setAuthenticated(true);
       await loadPersistentProgress();
@@ -193,7 +227,7 @@ export default function Home() {
     <nav className="nav shell">
       <a className="wordmark" href="#"><Mark/><span>flat<span className="wordmark-light">quest</span></span></a>
       <div className="nav-links"><a href="#how-it-works">How it works</a><a href="#quests">Quests</a><a href="#about">Why FlatQuest</a><Link href="/dashboard">My dashboard ↗</Link></div>
-      <button className="connect-button" onClick={connect} disabled={connecting} aria-busy={connecting}>{connecting ? "Connecting..." : account ? (authenticated ? account.slice(0, 6) + "..." + account.slice(-4) : "Verify wallet") : "Connect wallet"} <span>{connecting ? "…" : "↗"}</span></button>
+      <button className="connect-button" onClick={connect} disabled={connecting || retrySeconds > 0} aria-busy={connecting}>{retrySeconds > 0 ? `Retry in ${Math.floor(retrySeconds / 60)}:${String(retrySeconds % 60).padStart(2, "0")}` : connecting ? "Connecting..." : account ? (authenticated ? account.slice(0, 6) + "..." + account.slice(-4) : "Verify wallet") : "Connect wallet"} <span>{connecting ? "…" : "↗"}</span></button>
     </nav>
 
     <section className="hero shell">
@@ -231,7 +265,7 @@ export default function Home() {
         {filtered.map((q) => <article className="quest-card" key={q.id}><div className="quest-card-top"><span className="quest-index">0{q.id}</span><span className="quest-category">{q.category}</span><span className={completed.includes(q.id) ? "status complete" : "status"}>{completed.includes(q.id) ? q.id === 3 && verificationEvidence ? "✓ Onchain verified" : q.id === 4 ? "✓ Self reported" : q.id === 1 && authenticated ? "✓ Wallet verified" : "✓ Recorded locally" : "○ Available"}</span></div><h4>{q.title}</h4><p>{q.description}</p><Link className="quest-guide-link" href={`/quests/${q.slug}`}>Read quest guide ↗</Link>
           {q.type === "transaction" && <div className="verify-field"><input value={hash} onChange={(e) => setHash(e.target.value)} placeholder="Paste transaction hash (0x…)" aria-label="Transaction hash"/><button onClick={verifyTransaction} disabled={busy}>{busy ? "Checking..." : "Verify proof"}</button></div>}
           {q.type === "explore" && <div className="explore-action"><button onClick={() => { setExplored(!explored); if (!explored) { save(4); if (authenticated) fetch("/api/progress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ questSlug: "explore-ecosystem", status: "submitted" }) }).then((response) => { if (!response.ok) throw new Error("Could not save progress"); setNotice("Explorer milestone saved to your FlatQuest account as a self-reported step."); }).catch(() => setNotice("Explorer milestone is recorded on this device only. Sign in and try again to sync it.")); else setNotice("Explorer milestone recorded on this device. Sign in to sync it to your account."); } }}>{explored ? "Explored ✓" : "I explored the ecosystem"}</button><a href="https://worldisflat.fun/" target="_blank" rel="noreferrer">Open World Is Flat ↗</a></div>}
-          {q.type === "wallet" && <button className="quest-action" onClick={connect} disabled={connecting}>{connecting ? "Connecting..." : account && authenticated ? "Wallet verified ✓" : account ? "Verify wallet ↗" : "Connect wallet ↗"}</button>}
+          {q.type === "wallet" && <button className="quest-action" onClick={connect} disabled={connecting || retrySeconds > 0}>{retrySeconds > 0 ? `Try again in ${Math.floor(retrySeconds / 60)}:${String(retrySeconds % 60).padStart(2, "0")}` : connecting ? "Connecting..." : account && authenticated ? "Wallet verified ✓" : account ? "Verify wallet ↗" : "Connect wallet ↗"}</button>}
           {q.type === "network" && <button className="quest-action" onClick={switchNetwork}>{chainId.toLowerCase() === CHAIN_ID.toLowerCase() ? "Robinhood Chain testnet ✓" : "Switch to testnet ↗"}</button>}
         </article>)}
         {verificationEvidence && <section className="evidence-card" aria-label="Transaction verification evidence"><div className="evidence-heading"><span className="evidence-badge">✓</span><div><strong>Transaction receipt verified</strong><small>ROBINHOOD CHAIN TESTNET · 46630</small></div></div><div className="evidence-grid"><div><small>TRANSACTION</small><a href={"https://explorer.testnet.chain.robinhood.com/tx/" + verificationEvidence.transactionHash} target="_blank" rel="noreferrer">{verificationEvidence.transactionHash.slice(0, 10)}…{verificationEvidence.transactionHash.slice(-8)} ↗</a></div><div><small>BLOCK</small><strong>{verificationEvidence.blockNumber.toLocaleString()}</strong></div><div><small>CONFIRMATIONS</small><strong>{verificationEvidence.confirmations}</strong></div><div><small>WALLET</small><strong>{verificationEvidence.walletAddress.slice(0, 8)}…{verificationEvidence.walletAddress.slice(-6)}</strong></div><div><small>RECIPIENT</small><strong>{verificationEvidence.transactionTo ? verificationEvidence.transactionTo.slice(0, 8) + "…" + verificationEvidence.transactionTo.slice(-6) : "Contract creation"}</strong></div><div><small>INPUT DATA</small><strong>{verificationEvidence.inputDataBytes} bytes</strong></div></div><p>Receipt evidence is saved to your FlatQuest account. This check confirms a successful transaction from your authenticated wallet. It does not prove a specific contract interaction or a particular ecosystem task.</p></section>}
