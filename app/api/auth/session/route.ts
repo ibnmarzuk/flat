@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getDb } from "@/lib/db";
-import { hashToken, SESSION_COOKIE } from "@/lib/auth";
+import { getSessionCookieOptions, hashToken, SESSION_COOKIE } from "@/lib/auth";
 import { isValidSessionToken } from "@/lib/wallet-auth-policy";
 
 export const runtime = "nodejs";
@@ -35,6 +35,7 @@ export async function GET() {
 export async function DELETE() {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
+  let revoked = true;
   if (isValidSessionToken(token)) {
     try {
       const db = getDb();
@@ -43,10 +44,13 @@ export async function DELETE() {
         where token_hash = ${hashToken(token)} and revoked_at is null
       `;
     } catch {
-      return NextResponse.json({ error: "Sign out is temporarily unavailable." }, { status: 503 });
+      revoked = false;
     }
   }
-  const response = NextResponse.json({ authenticated: false });
-  response.cookies.set(SESSION_COOKIE, "", { ...({ httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" as const, path: "/" }), maxAge: 0 });
+  const headers = { "Cache-Control": "no-store" };
+  const response = revoked
+    ? NextResponse.json({ authenticated: false }, { headers })
+    : NextResponse.json({ error: "The server could not revoke the session. The browser cookie was cleared." }, { status: 503, headers });
+  response.cookies.set(SESSION_COOKIE, "", { ...getSessionCookieOptions(), maxAge: 0 });
   return response;
 }
