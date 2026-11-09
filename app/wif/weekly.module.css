@@ -1,0 +1,205 @@
+.page {
+  min-height: 100vh;
+  padding: 0 24px 72px;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.shell {
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+.nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 26px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.nav a, .actions a, .history a {
+  color: #45612e;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(260px, 1fr);
+  gap: clamp(24px, 6vw, 80px);
+  align-items: center;
+  padding: clamp(36px, 7vw, 90px) 0 32px;
+}
+
+.hero h1 {
+  margin: 12px 0 16px;
+  font-size: clamp(48px, 9vw, 92px);
+  letter-spacing: -.08em;
+  line-height: .96;
+}
+
+.hero h1 em {
+  color: #526e36;
+  font-weight: 600;
+}
+
+.hero p, .panel p, .connect p, .complete p {
+  max-width: 55ch;
+  line-height: 1.6;
+}
+
+.kicker {
+  color: #47632e;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: .11em;
+  font-weight: 600;
+}
+
+.week {
+  padding: 26px;
+  border-radius: 22px;
+  background: #e8f0db;
+  border: 1px solid #d2e0c0;
+}
+
+.week h2, .panel h2, .history h2, .complete h2, .connect h2 {
+  margin: 10px 0;
+  letter-spacing: -.04em;
+}
+
+.week p {
+  margin: 8px 0 22px;
+  font-size: 13px;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid #c6d8b2;
+  padding-top: 16px;
+  gap: 16px;
+}
+
+.metrics strong {
+  display: block;
+  font-size: 32px;
+  line-height: 1.1;
+}
+
+.metrics span {
+  display: block;
+  margin-top: 5px;
+  font-size: 13px;
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.panel, .complete, .connect, .history {
+  padding: clamp(20px, 4vw, 32px);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: white;
+}
+
+.panel form, .panel label {
+  display: grid;
+  gap: 8px;
+}
+
+.panel form {
+  margin-top: 16px;
+  gap: 14px;
+}
+
+.panel label {
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.panel input {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #c6d2bd;
+  border-radius: 9px;
+  background: #fafbf8;
+  color: var(--ink);
+  font: 16px 'DM Mono', monospace;
+}
+
+.panel button, .actions button, .connect button {
+  min-height: 44px;
+  justify-self: start;
+  text-align: left;
+  cursor: pointer;
+}
+
+.panel button:disabled, .connect button:disabled {
+  cursor: default;
+}
+
+.secondary {
+  border: 1px solid #a6be90;
+  border-radius: 9px;
+  padding: 10px 13px;
+  color: #2f4b1e;
+  background: #f3f7ec;
+  font-weight: 750;
+}
+
+.help, .feedback {
+  font-size: 14px;
+}
+
+.feedback {
+  padding: 12px 16px;
+  background: #e8f0db;
+  border-radius: 9px;
+}
+
+.connect, .actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.actions {
+  justify-content: flex-start;
+}
+
+.complete {
+  background: #ecf5df;
+}
+
+.history {
+  margin-top: 18px;
+}
+
+.history ul {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.history li {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 700px) {
+  .page { padding-inline: 16px; }
+  .hero, .steps { grid-template-columns: 1fr; }
+  .history li { grid-template-columns: 1fr; gap: 4px; }
+}
