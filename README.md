@@ -23,6 +23,14 @@ The current verifier checks a transaction on Robinhood Chain testnet (chain ID `
 
 The proof is intentionally scoped to **a successful transaction sent by the authenticated wallet**. It does not prove that a user completed a particular contract interaction, purchased a token, or performed a specific ecosystem task. Quest-specific verification rules are required before making those stronger claims.
 
+## Weekly WIF challenge
+
+The `/wif` challenge lets a signed-in user send the World Is Flat token to another wallet on Robinhood Chain mainnet (chain ID `4663`). The recipient and amount are chosen by the user and reviewed in their wallet. Users can also submit a qualifying transfer they already sent.
+
+FlatQuest checks the receipt, its block timestamp, at least two confirmations, and a positive ERC-20 transfer from the signed-in wallet emitted by the [organizer’s WIF token](https://worldisflat.fun/). The challenge resets on Mondays at 00:00 UTC. Each wallet can record one proof per week, build a streak, and share the challenge with the recipient. The dashboard displays weekly progress alongside the starter quests.
+
+Set `ROBINHOOD_MAINNET_RPC_URL` for a dedicated server RPC. The public Robinhood Chain mainnet RPC is used by default. Weekly evidence uses the existing Neon quest, completion and verification tables.
+
 ## Architecture
 
 - **Frontend:** Next.js, React and TypeScript.

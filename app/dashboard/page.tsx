@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { getDb } from "@/lib/db";
+import { getWifProgress } from "@/lib/wif-progress";
+import { WIF_EXPLORER, WIF_QUEST_SLUG } from "@/lib/weekly-wif";
 import WalletGate from "./wallet-gate";
 import { getAuthenticatedWallet, SESSION_COOKIE } from "@/lib/auth";
 
@@ -51,9 +53,11 @@ export default async function DashboardPage() {
       order by verified_at desc
       limit 1
     ) vr on true
-    where c.wallet_address = ${wallet}
+    where c.wallet_address = ${wallet} and q.slug <> ${WIF_QUEST_SLUG}
     order by coalesce(c.verified_at, c.submitted_at, c.updated_at) desc
   `;
+  const weekly = await getWifProgress(wallet).catch(() => null);
+  const latestWifProof = weekly?.recentProofs[0];
   const starterPath = [
     { slug: "connect-wallet", title: "Connect your wallet" },
     { slug: "robinhood-testnet", title: "Get your network ready" },
@@ -76,6 +80,18 @@ export default async function DashboardPage() {
       <div className="dashboard-header"><div><span className="dashboard-kicker">YOUR ONCHAIN JOURNEY</span><h1>Your progress.<br/><em>Backed by proof.</em></h1><p>One place for your FlatQuest milestones and verifiable activity.</p></div><div className="dashboard-wallet"><small>CONNECTED WALLET</small><strong>{shortWallet(wallet)}</strong><a href={"https://explorer.testnet.chain.robinhood.com/address/" + wallet} target="_blank" rel="noreferrer">View on explorer ↗</a></div></div>
       <section className="dashboard-stats"><article><small>VERIFIED MILESTONES</small><strong>{verified}</strong><span>Wallet, network and transaction checks</span></article><article><small>SELF REPORTED</small><strong>{submitted}</strong><span>Learning activity recorded</span></article><article><small>QUESTS AVAILABLE</small><strong>{total}</strong><span>In the current starter path</span></article></section>
       <section className="dashboard-progress"><div className="dashboard-section-head"><div><span className="dashboard-kicker">YOUR JOURNEY</span><h2>Keep moving forward</h2></div><strong>{progress}%</strong></div><div className="dashboard-track"><span style={{width: progress + "%"}}/></div><p>{recorded} of {total} starter milestones recorded · {verified} verified · {submitted} self reported.</p></section>
+      <section className="dashboard-progress">
+        <div className="dashboard-section-head">
+          <div><span className="dashboard-kicker">WEEKLY MAINNET QUEST</span><h2>Pass $WIF forward</h2></div>
+          {weekly && <strong>{weekly.streak} {weekly.streak === 1 ? "week" : "weeks"}</strong>}
+        </div>
+        <p>{weekly?.currentProof ? "This week’s transfer is verified. Your next quest opens Monday." : "Verify a WIF transfer this week to add to your streak."}
+          {weekly && ` ${weekly.totalWeeks} verified ${weekly.totalWeeks === 1 ? "week" : "weeks"} overall.`}</p>
+        <div className="weekly-dashboard-links">
+          <Link href="/wif" prefetch={false}>Open weekly quest ↗</Link>
+          {latestWifProof && <a href={`${WIF_EXPLORER}/tx/${latestWifProof.transactionHash}`} target="_blank" rel="noreferrer">View latest WIF proof ↗</a>}
+        </div>
+      </section>
       <section className="dashboard-history"><div className="dashboard-section-head"><div><span className="dashboard-kicker">ACTIVITY HISTORY</span><h2>Your milestones</h2></div><span>{rows.length} recorded</span></div>
         {rows.length ? <div className="dashboard-rows">{rows.map((row) => <article className="dashboard-row" key={row.slug}><div className="dashboard-row-icon">{row.status === "verified" ? "✓" : row.status === "submitted" ? "↗" : "○"}</div><div className="dashboard-row-main"><Link href={`/quests/${row.slug}`}><strong>{row.title} ↗</strong></Link><span>{row.category} · {row.status === "verified" ? row.slug === "robinhood-testnet" ? "Network ready" : "Verified" : row.status === "submitted" ? "Self-reported" : row.status}</span>{row.transaction_hash && <><a href={"https://explorer.testnet.chain.robinhood.com/tx/" + row.transaction_hash} target="_blank" rel="noreferrer">View transaction {row.transaction_hash.slice(0, 10)}… ↗</a><small className="dashboard-proof-meta">Chain {row.chain_id ?? "Unknown"} · Block {row.block_number ?? "Pending"} · {row.confirmations ?? 0} confirmations</small></>}</div><div className="dashboard-row-date">{formatDate(row.verified_at || row.submitted_at)}</div></article>)}</div> : <div className="dashboard-no-activity"><strong>Your first milestone is waiting.</strong><p>Start with the wallet connection quest, then follow the guided path.</p><Link href="/#quests">Browse the quest board ↗</Link></div>}
       </section>

@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useWalletSession } from "./wallet-session";
+import { selectWalletNetwork } from "@/lib/wallet-network";
 
 const CHAIN_ID = "0xb626"; // Robinhood Chain testnet, 46630
 const RPC = "https://rpc.testnet.chain.robinhood.com";
@@ -97,30 +98,12 @@ export default function Home() {
     try {
       const provider = await getWalletProvider();
       if (!provider) { setNotice("Open FlatQuest in a browser with MetaMask or another Ethereum wallet."); return; }
-      const readChain = async () => String(await provider.request({ method: "eth_chainId" })).toLowerCase();
-      const switchChain = () => provider.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: CHAIN_ID }]
+      const id = await selectWalletNetwork(provider, {
+        chainId: CHAIN_ID,
+        chainName: "Robinhood Chain Testnet",
+        rpcUrl: RPC,
+        explorer: "https://explorer.testnet.chain.robinhood.com/"
       });
-      if (await readChain() !== CHAIN_ID) {
-        try {
-          await switchChain();
-        } catch (error) {
-          if ((error as { code?: number } | null)?.code !== 4902) throw error;
-          await provider.request({
-            method: "wallet_addEthereumChain",
-            params: [{
-              chainId: CHAIN_ID,
-              chainName: "Robinhood Chain Testnet",
-              nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-              rpcUrls: [RPC],
-              blockExplorerUrls: ["https://explorer.testnet.chain.robinhood.com/"]
-            }]
-          });
-          if (await readChain() !== CHAIN_ID) await switchChain();
-        }
-      }
-      const id = await readChain();
       setChainId(id);
       if (id !== CHAIN_ID) throw new Error("Select Robinhood Chain testnet in your wallet and try again.");
       if (!isCurrentWallet(wallet)) {
@@ -236,6 +219,12 @@ export default function Home() {
       </div>
       <div className="hero-bottom"><span>BUILT FOR THE NEXT WAVE</span><span>WORLD IS FLAT · ROBINHOOD CHAIN</span></div>
     </section>
+
+    <aside className="weekly-wif-entry shell" aria-label="Weekly WIF quest">
+      <div><span className="eyebrow">NEW EVERY MONDAY · ROBINHOOD CHAIN</span><h2>Pass $WIF forward.</h2>
+        <p>Welcome another wallet, verify your transfer, and build a weekly streak.</p></div>
+      <Link href="/wif" className="primary-button">Open weekly quest <span>↗</span></Link>
+    </aside>
 
     <section className="stats shell"><div><strong>01</strong><span>Discover your next step</span></div><div><strong>02</strong><span>Complete a useful action</span></div><div><strong>03</strong><span>Keep proof of your progress</span></div></section>
 
