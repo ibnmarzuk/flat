@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import QuestProgress from "../quest-progress";
 import { getDb } from "@/lib/db";
 
 export const runtime = "nodejs";
@@ -42,18 +43,19 @@ export default async function QuestGuide({ params }: { params: Promise<{ slug: s
   `;
 
   const resource = steps.find((step) => step.resource_url)?.resource_url;
-  const number = String(steps.length ? steps[0].sort_order : 1).padStart(2, "0");
+
 
   return (
     <main className="guide-page">
       <div className="guide-shell">
         <Link href="/#quests" className="guide-back">← Back to quest board</Link>
-        <div className="guide-kicker">FLATQUEST FIELD GUIDE · QUEST {number}</div>
+        <div className="guide-kicker">FLATQUEST FIELD GUIDE</div>
         <div className="guide-heading">
           <span className="guide-category">{quest.category}</span>
           <h1>{quest.title}</h1>
           <p>{quest.description}</p>
         </div>
+        <QuestProgress slug={slug} />
         <section className="guide-purpose">
           <span>WHY THIS MATTERS</span>
           <p>{quest.verification_type === "self_report"
@@ -67,7 +69,7 @@ export default async function QuestGuide({ params }: { params: Promise<{ slug: s
           {steps.map((step, index) => (
             <article className="guide-step" key={step.id}>
               <span className="guide-step-number">{String(index + 1).padStart(2, "0")}</span>
-              <div><h2>{step.title}</h2><p>{step.instructions}</p></div>
+              <div><h2>{step.title}</h2><p>{step.instructions}</p>{step.resource_url && <a className="quest-guide-link" href={step.resource_url} target="_blank" rel="noreferrer">Open step resource ↗</a>}</div>
             </article>
           ))}
           {steps.length === 0 && <p>No instructions have been published for this quest yet.</p>}
@@ -77,8 +79,9 @@ export default async function QuestGuide({ params }: { params: Promise<{ slug: s
             <span><small>QUEST RESOURCE</small><strong>Open reference material</strong></span><span aria-hidden="true">↗</span>
           </a>
         )}
-        <div className="guide-disclaimer">FlatQuest clearly distinguishes local prototype progress, self reported learning and independently verifiable onchain evidence. Never share your private key or recovery phrase.</div>
-        <Link href="/#quests" className="primary-button guide-cta">Return to quests <span>↗</span></Link>
+        <div className="guide-disclaimer">Sign in with your wallet to save your progress. Explorer activity is labelled self reported. Never share your private key or recovery phrase.</div>
+        <Link href={`/#quest-${slug}`} className="primary-button guide-cta">Open quest action <span>↗</span></Link>
+        <Link href="/dashboard" prefetch={false} className="guide-resource">View my dashboard ↗</Link>
       </div>
     </main>
   );
