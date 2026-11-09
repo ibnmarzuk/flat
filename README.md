@@ -29,6 +29,8 @@ The `/wif` challenge lets a signed-in user send the World Is Flat token to anoth
 
 FlatQuest checks the receipt, its block timestamp, at least two confirmations, and a positive ERC-20 transfer from the signed-in wallet emitted by the [organizer’s WIF token](https://worldisflat.fun/). The challenge resets on Mondays at 00:00 UTC. Each wallet can record one proof per week, build a streak, and share the challenge with the recipient. The dashboard displays weekly progress alongside the starter quests.
 
+The `/wif/example` page runs the receipt checks on a fixed public transfer. It serves as a read-only demonstration of the verifier.
+
 Set `ROBINHOOD_MAINNET_RPC_URL` for a dedicated server RPC. The public Robinhood Chain mainnet RPC is used by default. Weekly evidence uses the existing Neon quest, completion and verification tables.
 
 ## Architecture

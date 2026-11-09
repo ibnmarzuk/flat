@@ -203,3 +203,13 @@
   .hero, .steps { grid-template-columns: 1fr; }
   .history li { grid-template-columns: 1fr; gap: 4px; }
 }
+
+.exampleLink {
+  margin: 0 0 20px;
+  font-weight: 750;
+}
+
+.exampleLink a {
+  color: #45612e;
+  text-underline-offset: 3px;
+}

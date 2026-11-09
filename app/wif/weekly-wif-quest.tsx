@@ -243,6 +243,7 @@ export default function WeeklyWifQuest({ initialWeek }: { initialWeek: ReturnTyp
         </aside>
       </header>
 
+      <p className={styles.exampleLink}><Link href="/wif/example">Check a real $WIF receipt ↗</Link></p>
       {statusError && <p role="status" className={styles.feedback}>{statusError}</p>}
       {checkingSession ? <p role="status" className={styles.feedback}>Checking wallet session…</p>
         : !wallet ? <section className={styles.connect}>
