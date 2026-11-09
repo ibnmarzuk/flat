@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type WalletProvider = { request: (args: { method: string; params?: unknown[] }) => Promise<unknown>; on?: (event: string, cb: (...args: unknown[]) => void) => void; removeListener?: (event: string, cb: (...args: unknown[]) => void) => void; isMetaMask?: boolean };
 declare global {
@@ -45,6 +45,8 @@ function Mark({ small = false }: { small?: boolean }) {
 }
 
 export default function Home() {
+  const walletVersion = useRef(0);
+  const [switching, setSwitching] = useState(false);
   const [quests, setQuests] = useState<Quest[]>(initialQuests);
   const [account, setAccount] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
@@ -74,43 +76,64 @@ export default function Home() {
   }, [authRetryAt]);
 
   const loadPersistentProgress = useCallback(async () => {
+    const version = walletVersion.current;
     try {
       const response = await fetch("/api/progress", { cache: "no-store" });
       if (!response.ok) return;
       const data = await response.json() as { completions?: { slug: string; status: string }[] };
       const ids = (data.completions || []).filter((item) => item.status === "verified" || item.status === "submitted").map((item) => ({ "connect-wallet": 1, "robinhood-testnet": 2, "prove-transaction": 3, "explore-ecosystem": 4 }[item.slug as "connect-wallet" | "robinhood-testnet" | "prove-transaction" | "explore-ecosystem"])).filter((id): id is number => typeof id === "number");
-      setCompleted((old) => [...new Set([...old, ...ids])]);
+      if (version !== walletVersion.current) return;
+      setCompleted(ids);
+      setExplored(ids.includes(4));
     } catch {}
   }, []);
 
   useEffect(() => {
     fetch("/api/quests").then((response) => response.ok ? response.json() : Promise.reject(new Error("Quest API unavailable"))).then((data: { quests?: Quest[] }) => { if (Array.isArray(data.quests) && data.quests.length) setQuests(data.quests); }).catch(() => {});
-    try { const savedProgress = JSON.parse(localStorage.getItem("flatquest-progress") || "[]"); const safeProgress = Array.isArray(savedProgress) ? savedProgress.filter((id): id is number => Number.isInteger(id) && id >= 1 && id <= 4) : []; setCompleted(safeProgress); setExplored(safeProgress.includes(4)); const savedEvidence = localStorage.getItem("flatquest-verification-evidence"); if (savedEvidence) setVerificationEvidence(JSON.parse(savedEvidence)); } catch {}
+    const version = walletVersion.current;
     fetch("/api/auth/session", { cache: "no-store" }).then((response) => response.ok ? response.json() : Promise.reject()).then((session: { authenticated?: boolean; walletAddress?: string }) => {
+      if (version !== walletVersion.current) return;
       if (session.authenticated && session.walletAddress) { setAccount(session.walletAddress); setAuthenticated(true); loadPersistentProgress(); }
     }).catch(() => {});
-    if (window.ethereum) {
-      window.ethereum.request({ method: "eth_accounts" }).then((a) => { const list = a as string[]; if (list[0]) setAccount((current) => current || list[0]); }).catch(() => {});
-      window.ethereum.request({ method: "eth_chainId" }).then((id) => setChainId(String(id))).catch(() => {});
-      const onAccounts = (...args: unknown[]) => {
-        const next = ((args[0] as string[]) || [])[0] || "";
-        setAccount(next);
-        setAuthenticated(false);
-        fetch("/api/auth/session", { method: "DELETE" }).catch(() => {});
-      };
-      const onChain = (...args: unknown[]) => setChainId(String(args[0] || ""));
-      window.ethereum.on?.("accountsChanged", onAccounts);
-      window.ethereum.on?.("chainChanged", onChain);
-      return () => { window.ethereum?.removeListener?.("accountsChanged", onAccounts); window.ethereum?.removeListener?.("chainChanged", onChain); };
-    }
   }, [loadPersistentProgress]);
 
-  const save = (id: number) => setCompleted((old) => { const next = [...new Set([...old, id])]; localStorage.setItem("flatquest-progress", JSON.stringify(next)); return next; });
+  useEffect(() => {
+    let disposed = false;
+    let provider: WalletProvider | null = null;
+    const onAccounts = (...args: unknown[]) => {
+      walletVersion.current += 1;
+      setAccount(((args[0] as string[]) || [])[0] || "");
+      setAuthenticated(false);
+      setCompleted([]);
+      setExplored(false);
+      setVerificationEvidence(null);
+      setHash("");
+      setNotice("Wallet changed. Verify this wallet to load its saved progress.");
+    };
+    const onChain = (...args: unknown[]) => setChainId(String(args[0] || ""));
+    discoverWalletProvider().then(async (found) => {
+      if (disposed || !found) return;
+      provider = found;
+      setWalletProvider(found);
+      found.on?.("accountsChanged", onAccounts);
+      found.on?.("chainChanged", onChain);
+      const id = await found.request({ method: "eth_chainId" });
+      if (!disposed) setChainId(String(id));
+    }).catch(() => {});
+    return () => {
+      disposed = true;
+      provider?.removeListener?.("accountsChanged", onAccounts);
+      provider?.removeListener?.("chainChanged", onChain);
+    };
+  }, []);
+
+  const save = (id: number) => setCompleted((old) => [...new Set([...old, id])]);
   const progress = Math.round((completed.length / quests.length) * 100);
   const filtered = useMemo(() => quests.filter((q) => filter === "All quests" || q.category === filter), [filter, quests]);
 
   async function connect() {
     if (connecting || retrySeconds > 0) return;
+    const version = walletVersion.current;
     setConnecting(true);
     setNotice("Looking for an installed browser wallet...");
     try {
@@ -121,11 +144,17 @@ export default function Home() {
       const address = accounts[0];
       if (!address) { setNotice("No wallet account was returned."); return; }
       const id = await provider.request({ method: "eth_chainId" }) as string;
+      if (version !== walletVersion.current) return;
+      setAuthenticated(false);
+      setCompleted([]);
+      setExplored(false);
+      setVerificationEvidence(null);
       setAccount(address); setChainId(id);
       const existingSessionResponse = await fetch("/api/auth/session", { cache: "no-store" });
       if (existingSessionResponse.ok) {
         const existingSession = await existingSessionResponse.json() as { authenticated?: boolean; walletAddress?: string };
         if (existingSession.authenticated && existingSession.walletAddress?.toLowerCase() === address.toLowerCase()) {
+          if (version !== walletVersion.current) return;
           setAuthenticated(true);
           await loadPersistentProgress();
           setNotice("Your wallet session is already verified. No new signature is needed.");
@@ -155,6 +184,7 @@ export default function Home() {
         throw new Error("Too many sign in attempts. FlatQuest will enable retry when the cooldown ends.");
       }
       if (!verifyResponse.ok || !result.authenticated) throw new Error(result.error || "Wallet sign in failed.");
+      if (version !== walletVersion.current) return;
       setAuthenticated(true);
       await loadPersistentProgress();
       setNotice("Wallet ownership verified. Your FlatQuest account is ready.");
@@ -170,37 +200,77 @@ export default function Home() {
   }
 
   async function switchNetwork() {
-    const provider = walletProvider || await discoverWalletProvider();
-    if (!provider) { setNotice("No browser wallet detected. Install or unlock MetaMask first."); return; }
+    if (switching) return;
+    const version = walletVersion.current;
+    setSwitching(true);
     try {
-      await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: CHAIN_ID }] });
-    } catch (error) {
-      const code = (error as { code?: number }).code;
-      if (code === 4902) {
-        await provider.request({ method: "wallet_addEthereumChain", params: [{ chainId: CHAIN_ID, chainName: "Robinhood Chain Testnet", nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: [RPC], blockExplorerUrls: ["https://explorer.testnet.chain.robinhood.com/"] }] });
-      } else { setNotice("Network switch was cancelled."); return; }
-    }
-    const id = await provider.request({ method: "eth_chainId" }) as string;
-    setChainId(id);
-    if (id.toLowerCase() === CHAIN_ID.toLowerCase()) {
-      if (!authenticated) {
-        setNotice("Robinhood Chain testnet detected. Sign in with your wallet to save this milestone.");
-        return;
+      const provider = walletProvider || await discoverWalletProvider();
+      if (!provider) { setNotice("No browser wallet detected. Install or unlock MetaMask first."); return; }
+      try {
+        await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: CHAIN_ID }] });
+      } catch (error) {
+        const code = (error as { code?: number }).code;
+        if (code === 4902) {
+          await provider.request({ method: "wallet_addEthereumChain", params: [{ chainId: CHAIN_ID, chainName: "Robinhood Chain Testnet", nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: [RPC], blockExplorerUrls: ["https://explorer.testnet.chain.robinhood.com/"] }] });
+        } else { setNotice("Network switch was cancelled."); return; }
       }
-      const response = await fetch("/api/verify-network", {
+      const id = await provider.request({ method: "eth_chainId" }) as string;
+      setChainId(id);
+      if (id.toLowerCase() === CHAIN_ID.toLowerCase()) {
+        if (!authenticated) {
+          setNotice("Robinhood Chain testnet detected. Sign in with your wallet to save this milestone.");
+          return;
+        }
+        const response = await fetch("/api/verify-network", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chainId: id })
+        });
+        const result = await response.json() as { verified?: boolean; error?: string };
+        if (!response.ok || !result.verified) throw new Error(result.error || "Network verification failed.");
+        if (version !== walletVersion.current) return;
+        save(2);
+        await loadPersistentProgress();
+        setNotice("Robinhood Chain testnet verified. This milestone is saved to your FlatQuest account.");
+      }
+
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Network switch failed. Please try again.");
+    } finally {
+      setSwitching(false);
+    }
+  }
+
+  async function recordExploration() {
+    if (busy) return;
+    if (!authenticated) {
+      setNotice("Verify your wallet to save your explorer milestone.");
+      return;
+    }
+    const version = walletVersion.current;
+    setBusy(true);
+    try {
+      const response = await fetch("/api/progress", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chainId: id })
+        body: JSON.stringify({ questSlug: "explore-ecosystem", status: "submitted" })
       });
-      const result = await response.json() as { verified?: boolean; error?: string };
-      if (!response.ok || !result.verified) throw new Error(result.error || "Network verification failed.");
-      save(2);
-      await loadPersistentProgress();
-      setNotice("Robinhood Chain testnet verified. This milestone is saved to your FlatQuest account.");
+      if (!response.ok) throw new Error("Could not save your explorer milestone. Please try again.");
+      if (version !== walletVersion.current) return;
+      save(4);
+      setExplored(true);
+      setNotice("Explorer milestone saved as self-reported activity.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not save progress.");
+    } finally {
+      setBusy(false);
     }
   }
 
   async function verifyTransaction() {
+    if (busy) return;
+    if (!authenticated) { setNotice("Verify your wallet before submitting proof."); return; }
+    const version = walletVersion.current;
     if (!account) { setNotice("Connect your wallet before submitting proof."); return; }
     if (chainId.toLowerCase() !== CHAIN_ID.toLowerCase()) { setNotice("Switch to Robinhood Chain testnet before verifying."); return; }
     if (!/^0x([A-Fa-f0-9]{64})$/.test(hash.trim())) { setNotice("Enter a valid 32-byte transaction hash."); return; }
@@ -216,7 +286,7 @@ export default function Home() {
         throw new Error(result.error || "Verification failed. Please try again.");
       }
       const evidence = { transactionHash: result.transactionHash || hash.trim(), walletAddress: result.walletAddress || account, blockNumber: result.blockNumber || 0, blockHash: result.blockHash || "", transactionTo: result.transactionTo ?? null, transactionValue: result.transactionValue || "0x0", inputDataBytes: result.inputDataBytes || 0, confirmations: result.confirmations || 0, verifiedAt: result.verifiedAt || new Date().toISOString() };
-      localStorage.setItem("flatquest-verification-evidence", JSON.stringify(evidence));
+      if (version !== walletVersion.current) return;
       setVerificationEvidence(evidence);
       save(3); setNotice("Transaction receipt verified against Robinhood Chain testnet. Evidence is saved to your FlatQuest account.");
     } catch (error) { setNotice(error instanceof Error ? error.message : "Verification failed. Please try again."); }
@@ -224,6 +294,7 @@ export default function Home() {
   }
 
   return <main>
+    {notice && <div className="notice global-notice" role="status"><span>i</span>{notice}<button onClick={() => setNotice("")} aria-label="Dismiss message">×</button></div>}
     <nav className="nav shell">
       <a className="wordmark" href="#"><Mark/><span>flat<span className="wordmark-light">quest</span></span></a>
       <div className="nav-links"><a href="#how-it-works">How it works</a><a href="#quests">Quests</a><a href="#about">Why FlatQuest</a><Link href="/dashboard">My dashboard ↗</Link></div>
@@ -262,15 +333,15 @@ export default function Home() {
       </div>
       <div className="quest-list">
         <div className="quest-toolbar"><div><span className="eyebrow">THE QUEST BOARD</span><h3>Pick your path</h3></div><select value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Filter quests"><option>All quests</option><option>Getting started</option><option>Onchain proof</option><option>Explore</option></select></div>
-        {filtered.map((q) => <article className="quest-card" key={q.id}><div className="quest-card-top"><span className="quest-index">0{q.id}</span><span className="quest-category">{q.category}</span><span className={completed.includes(q.id) ? "status complete" : "status"}>{completed.includes(q.id) ? q.id === 3 && verificationEvidence ? "✓ Onchain verified" : q.id === 4 ? "✓ Self reported" : q.id === 1 && authenticated ? "✓ Wallet verified" : "✓ Recorded locally" : "○ Available"}</span></div><h4>{q.title}</h4><p>{q.description}</p><Link className="quest-guide-link" href={`/quests/${q.slug}`}>Read quest guide ↗</Link>
+        {filtered.map((q) => <article className="quest-card" key={q.id}><div className="quest-card-top"><span className="quest-index">0{q.id}</span><span className="quest-category">{q.category}</span><span className={completed.includes(q.id) ? "status complete" : "status"}>{completed.includes(q.id) ? q.id === 3 && verificationEvidence ? "✓ Onchain verified" : q.id === 4 ? "✓ Self reported" : q.id === 1 && authenticated ? "✓ Wallet verified" : q.id === 2 && authenticated ? "✓ Network ready" : "✓ Recorded" : "○ Available"}</span></div><h4>{q.title}</h4><p>{q.description}</p><Link className="quest-guide-link" href={`/quests/${q.slug}`}>Read quest guide ↗</Link>
           {q.type === "transaction" && <div className="verify-field"><input value={hash} onChange={(e) => setHash(e.target.value)} placeholder="Paste transaction hash (0x…)" aria-label="Transaction hash"/><button onClick={verifyTransaction} disabled={busy}>{busy ? "Checking..." : "Verify proof"}</button></div>}
-          {q.type === "explore" && <div className="explore-action"><button onClick={() => { setExplored(!explored); if (!explored) { save(4); if (authenticated) fetch("/api/progress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ questSlug: "explore-ecosystem", status: "submitted" }) }).then((response) => { if (!response.ok) throw new Error("Could not save progress"); setNotice("Explorer milestone saved to your FlatQuest account as a self-reported step."); }).catch(() => setNotice("Explorer milestone is recorded on this device only. Sign in and try again to sync it.")); else setNotice("Explorer milestone recorded on this device. Sign in to sync it to your account."); } }}>{explored ? "Explored ✓" : "I explored the ecosystem"}</button><a href="https://worldisflat.fun/" target="_blank" rel="noreferrer">Open World Is Flat ↗</a></div>}
+          {q.type === "explore" && <div className="explore-action"><button onClick={recordExploration} disabled={busy}>{explored ? "Explored ✓" : "I explored the ecosystem"}</button><a href="https://worldisflat.fun/" target="_blank" rel="noreferrer">Open World Is Flat ↗</a></div>}
           {q.type === "wallet" && <button className="quest-action" onClick={connect} disabled={connecting || retrySeconds > 0}>{retrySeconds > 0 ? `Try again in ${Math.floor(retrySeconds / 60)}:${String(retrySeconds % 60).padStart(2, "0")}` : connecting ? "Connecting..." : account && authenticated ? "Wallet verified ✓" : account ? "Verify wallet ↗" : "Connect wallet ↗"}</button>}
-          {q.type === "network" && <button className="quest-action" onClick={switchNetwork}>{chainId.toLowerCase() === CHAIN_ID.toLowerCase() ? "Robinhood Chain testnet ✓" : "Switch to testnet ↗"}</button>}
+          {q.type === "network" && <button className="quest-action" onClick={switchNetwork} disabled={switching}>{switching ? "Switching..." : chainId.toLowerCase() === CHAIN_ID.toLowerCase() ? "Robinhood Chain testnet ✓" : "Switch to testnet ↗"}</button>}
         </article>)}
         {verificationEvidence && <section className="evidence-card" aria-label="Transaction verification evidence"><div className="evidence-heading"><span className="evidence-badge">✓</span><div><strong>Transaction receipt verified</strong><small>ROBINHOOD CHAIN TESTNET · 46630</small></div></div><div className="evidence-grid"><div><small>TRANSACTION</small><a href={"https://explorer.testnet.chain.robinhood.com/tx/" + verificationEvidence.transactionHash} target="_blank" rel="noreferrer">{verificationEvidence.transactionHash.slice(0, 10)}…{verificationEvidence.transactionHash.slice(-8)} ↗</a></div><div><small>BLOCK</small><strong>{verificationEvidence.blockNumber.toLocaleString()}</strong></div><div><small>CONFIRMATIONS</small><strong>{verificationEvidence.confirmations}</strong></div><div><small>WALLET</small><strong>{verificationEvidence.walletAddress.slice(0, 8)}…{verificationEvidence.walletAddress.slice(-6)}</strong></div><div><small>RECIPIENT</small><strong>{verificationEvidence.transactionTo ? verificationEvidence.transactionTo.slice(0, 8) + "…" + verificationEvidence.transactionTo.slice(-6) : "Contract creation"}</strong></div><div><small>INPUT DATA</small><strong>{verificationEvidence.inputDataBytes} bytes</strong></div></div><p>Receipt evidence is saved to your FlatQuest account. This check confirms a successful transaction from your authenticated wallet. It does not prove a specific contract interaction or a particular ecosystem task.</p></section>}
-        {notice && <div className="notice" role="status"><span>i</span>{notice}<button onClick={() => setNotice("")} aria-label="Dismiss message">×</button></div>}
-        <div className="demo-note">Signed in progress and verification evidence are stored in Neon. Anonymous progress remains on this device. Transaction proof is checked against Robinhood Chain testnet. No wallet custody, no invented completions.</div>
+
+        <div className="demo-note">Verify your wallet to save milestones to your account. Transaction proof is checked on Robinhood Chain testnet. Explorer activity is self-reported.</div>
       </div>
     </div></section>
 
