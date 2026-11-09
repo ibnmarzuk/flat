@@ -297,10 +297,11 @@ export default function Home() {
     {notice && <div className="notice global-notice" role="status"><span>i</span>{notice}<button onClick={() => setNotice("")} aria-label="Dismiss message">×</button></div>}
     <nav className="nav shell">
       <a className="wordmark" href="#"><Mark/><span>flat<span className="wordmark-light">quest</span></span></a>
-      <div className="nav-links"><a href="#how-it-works">How it works</a><a href="#quests">Quests</a><a href="#about">Why FlatQuest</a><Link href="/dashboard">My dashboard ↗</Link></div>
+      <div className="nav-links"><a href="#how-it-works">How it works</a><a href="#quests">Quests</a><a href="#about">Why FlatQuest</a><Link href="/dashboard" prefetch={false}>My dashboard ↗</Link></div>
       <button className="connect-button" onClick={connect} disabled={connecting || retrySeconds > 0} aria-busy={connecting}>{retrySeconds > 0 ? `Retry in ${Math.floor(retrySeconds / 60)}:${String(retrySeconds % 60).padStart(2, "0")}` : connecting ? "Connecting..." : account ? (authenticated ? account.slice(0, 6) + "..." + account.slice(-4) : "Verify wallet") : "Connect wallet"} <span>{connecting ? "…" : "↗"}</span></button>
     </nav>
 
+    <nav className="mobile-navigation shell" aria-label="Quick navigation"><a href="#quests">Quests</a><Link href="/dashboard" prefetch={false}>My dashboard ↗</Link></nav>
     <section className="hero shell">
       <div className="hero-copy">
         <div className="eyebrow"><span className="live-dot"/> YOUR ONCHAIN JOURNEY STARTS HERE</div>
@@ -333,7 +334,7 @@ export default function Home() {
       </div>
       <div className="quest-list">
         <div className="quest-toolbar"><div><span className="eyebrow">THE QUEST BOARD</span><h3>Pick your path</h3></div><select value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Filter quests"><option>All quests</option><option>Getting started</option><option>Onchain proof</option><option>Explore</option></select></div>
-        {filtered.map((q) => <article className="quest-card" key={q.id}><div className="quest-card-top"><span className="quest-index">0{q.id}</span><span className="quest-category">{q.category}</span><span className={completed.includes(q.id) ? "status complete" : "status"}>{completed.includes(q.id) ? q.id === 3 && verificationEvidence ? "✓ Onchain verified" : q.id === 4 ? "✓ Self reported" : q.id === 1 && authenticated ? "✓ Wallet verified" : q.id === 2 && authenticated ? "✓ Network ready" : "✓ Recorded" : "○ Available"}</span></div><h4>{q.title}</h4><p>{q.description}</p><Link className="quest-guide-link" href={`/quests/${q.slug}`}>Read quest guide ↗</Link>
+        {filtered.map((q) => <article className="quest-card" id={`quest-${q.slug}`} key={q.id}><div className="quest-card-top"><span className="quest-index">0{q.id}</span><span className="quest-category">{q.category}</span><span className={completed.includes(q.id) ? "status complete" : "status"}>{completed.includes(q.id) ? q.id === 3 && verificationEvidence ? "✓ Onchain verified" : q.id === 4 ? "✓ Self reported" : q.id === 1 && authenticated ? "✓ Wallet verified" : q.id === 2 && authenticated ? "✓ Network ready" : "✓ Recorded" : "○ Available"}</span></div><h4>{q.title}</h4><p>{q.description}</p><Link className="quest-guide-link" href={`/quests/${q.slug}`}>Read quest guide ↗</Link>
           {q.type === "transaction" && <div className="verify-field"><input value={hash} onChange={(e) => setHash(e.target.value)} placeholder="Paste transaction hash (0x…)" aria-label="Transaction hash"/><button onClick={verifyTransaction} disabled={busy}>{busy ? "Checking..." : "Verify proof"}</button></div>}
           {q.type === "explore" && <div className="explore-action"><button onClick={recordExploration} disabled={busy}>{explored ? "Explored ✓" : "I explored the ecosystem"}</button><a href="https://worldisflat.fun/" target="_blank" rel="noreferrer">Open World Is Flat ↗</a></div>}
           {q.type === "wallet" && <button className="quest-action" onClick={connect} disabled={connecting || retrySeconds > 0}>{retrySeconds > 0 ? `Try again in ${Math.floor(retrySeconds / 60)}:${String(retrySeconds % 60).padStart(2, "0")}` : connecting ? "Connecting..." : account && authenticated ? "Wallet verified ✓" : account ? "Verify wallet ↗" : "Connect wallet ↗"}</button>}

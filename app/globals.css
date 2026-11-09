@@ -65,3 +65,8 @@
 button:disabled{cursor:wait;opacity:.65}a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #5b812b;outline-offset:4px}
 @media(max-width:560px){.verify-field{flex-wrap:wrap}.verify-field input{min-width:0;width:100%;font-size:16px}.verify-field button{min-height:44px}.quest-card-top{flex-wrap:wrap;gap:8px}.global-notice{bottom:12px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation:none!important;transition:none!important}}
+
+.mobile-navigation{display:none}
+.quest-card{scroll-margin-top:24px}
+.quest-progress-status{padding:16px 20px;border:1px solid var(--line);border-radius:10px;background:#edf3e5;font-size:14px;line-height:1.5}
+@media(max-width:850px){.mobile-navigation{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--line)}.mobile-navigation a{font-size:14px;font-weight:700;padding:8px 0}}
