@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { WalletSession } from "./wallet-session";
 
 export const metadata: Metadata = {
   title: "FlatQuest | Discover. Prove. Grow.",
@@ -14,5 +15,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body>{children}</body></html>;
+  return <html lang="en"><body><WalletSession>{children}</WalletSession></body></html>;
 }
