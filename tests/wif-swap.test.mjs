@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { encodeAbiParameters, parseAbiParameters } from "viem";
 import { WIF_TOKEN, WIF_TRANSFER_TOPIC } from "../lib/weekly-wif.js";
 import { findWifSwap } from "../lib/wif-swap.js";
 
@@ -12,14 +11,14 @@ const buyWallet = "0x6f8de009cd4fad0ab69dd519b60099e8ad2a1ee2";
 const sellWallet = "0x703aa657f283aae8cc334ae527cbd61dd6e9a684";
 const pool = "0x71ef4106340f0a3b9c19ec994eef4fc44a1d2513f38faac39d7636b156548c79";
 const swapTopic = "0x40e9cecb9f5f1f1c5b9c97dec2917b7ee92e57ba5563708daca94dd84ad7112f";
-const swapData = parseAbiParameters("int128, int128, uint160, uint128, int24, uint24");
+const word = (value) => BigInt.asUintN(256, value).toString(16).padStart(64, "0");
 const topicAddress = (address) => "0x" + address.slice(2).padStart(64, "0");
 
 function transfer(from, to, amount) {
   return {
     address: WIF_TOKEN,
     topics: [WIF_TRANSFER_TOPIC, topicAddress(from), topicAddress(to)],
-    data: "0x" + amount.toString(16).padStart(64, "0")
+    data: "0x" + word(amount)
   };
 }
 
@@ -27,9 +26,9 @@ function swap(amount0, amount1, caller = router) {
   return {
     address: manager,
     topics: [swapTopic, pool, topicAddress(caller)],
-    data: encodeAbiParameters(swapData, [
-      amount0, amount1, 98183637799192557305057798548163n, 29277002188455995403037n, 142452, 0
-    ])
+    data: "0x" + [
+      amount0, amount1, 98183637799192557305057798548163n, 29277002188455995403037n, 142452n, 0n
+    ].map(word).join("")
   };
 }
 
@@ -84,6 +83,7 @@ test("rejects other pools, untrusted routers and counterfeit swap events", () =>
 
 test("requires a real, nonzero swap and settlement in the same direction", () => {
   assert.equal(findWifSwap({ ...sell, logs: [swap(1n, 1n), sell.logs[1]] }), null);
+  assert.equal(findWifSwap({ ...sell, logs: [swap(1n << 127n, -1n), sell.logs[1]] }), null);
   assert.equal(findWifSwap({ ...sell, logs: [sell.logs[0], transfer(manager, sellWallet, sellAmount)] }), null);
   assert.equal(findWifSwap({ ...sell, logs: [sell.logs[0], transfer(sellWallet, manager, 0n)] }), null);
   assert.equal(findWifSwap({ ...sell, logs: [{ ...sell.logs[0], removed: true }, sell.logs[1]] }), null);
