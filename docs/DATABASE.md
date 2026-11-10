@@ -19,11 +19,12 @@ The SQL migrations in `drizzle/` define the application schema and incremental c
 - `profiles` for normalized wallet profiles.
 - `completions` for wallet-owned quest progress and status.
 - `verification_records` for server-written onchain evidence.
+- `wif_swap_proofs` for verified Robinhood Chain mainnet swaps. The transaction hash is the primary key for the one-XP award.
 - `wallet_auth_challenges` for short-lived, single-use sign-in nonces.
 - `wallet_sessions` for hashed session tokens and expiry/revocation.
 - `api_rate_limits` for atomic persistent rate-limit counters.
 
-The initial migration seeds the four starter quests. Later migrations add transaction idempotency, persistent rate limiting, and an index supporting bounded rate-limit retention. Apply migrations in numerical order to a dedicated database and verify the resulting schema before deploying application code that depends on them.
+The initial migration seeds the four starter quests. Later migrations add transaction idempotency, persistent rate limiting, an index supporting bounded rate-limit retention, and the swap proof table. Apply migrations in numerical order to a dedicated database and verify the resulting schema before deploying application code that depends on them.
 
 ## Security model
 

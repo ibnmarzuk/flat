@@ -3,7 +3,7 @@ import { getDb } from "@/lib/db";
 type RateLimitResult = { allowed: boolean; remaining: number; retryAfterSeconds: number };
 
 export async function consumeWalletRateLimit(
-  endpoint: "auth_nonce" | "auth_verify" | "transaction_verify" | "network_verify" | "wif_weekly_verify",
+  endpoint: "auth_nonce" | "auth_verify" | "transaction_verify" | "network_verify" | "wif_weekly_verify" | "wif_swap_verify",
   walletAddress: string,
   limit: number,
   windowSeconds: number
