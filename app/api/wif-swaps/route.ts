@@ -75,13 +75,15 @@ export async function POST(request: Request) {
       if (block.hash !== receipt.blockHash || !block.transactions.some((tx) => tx.toLowerCase() === hash)) {
         return failure("The transaction block changed. Wait for the receipt to settle and retry.", 409);
       }
-      if (head - receipt.blockNumber + 1n < 2n) return failure("Wait for two confirmations before verifying.", 409);
+      const confirmations = head - receipt.blockNumber + 1n;
+      if (confirmations < 2n) return failure("Wait for two confirmations before verifying.", 409);
 
       const saved = await saveWifSwapProof({
         ...swap,
         walletAddress: wallet,
         transactionHash: hash,
-        blockNumber: receipt.blockNumber
+        blockNumber: receipt.blockNumber,
+        confirmations: Number(confirmations)
       });
       if (!saved && !await hasWifSwapProof(wallet, hash)) {
         return failure("This transaction is already recorded for a different wallet.", 409);

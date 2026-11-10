@@ -1,17 +1,19 @@
-import { and, eq, sql } from "drizzle-orm";
-import { bigint, numeric, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { getDb } from "@/lib/db";
 import { XP, type XpProgress } from "@/lib/xp-rules";
 
-const wifSwapProofs = pgTable("wif_swap_proofs", {
-  transactionHash: text("transaction_hash").primaryKey(),
-  walletAddress: text("wallet_address").notNull(),
-  blockNumber: bigint("block_number", { mode: "bigint" }).notNull(),
-  direction: text("direction", { enum: ["buy", "sell"] }).notNull(),
-  wifAmount: numeric("wif_amount", { precision: 78, scale: 0 }).notNull(),
-  verifiedAt: timestamp("verified_at", { withTimezone: true }).defaultNow().notNull()
-});
+import { WIF_CHAIN_ID } from "@/lib/weekly-wif";
+import { WIF_SWAP_QUEST_SLUG, WIF_SWAP_VERIFICATION_METHOD } from "@/lib/wif-swap";
+
+type WifSwapProof = {
+  walletAddress: string;
+  transactionHash: string;
+  blockNumber: bigint;
+  confirmations: number;
+  direction: "buy" | "sell";
+  wifAmount: string;
+};
 
 const emptyProgress: XpProgress = { xp: 0, swapCount: 0, walletVerified: false, addressProven: false };
 const standingsLimit = 10;
@@ -37,8 +39,10 @@ function scoreTotals(wallet?: string) {
       group by c.wallet_address
     ), swaps as (
       select wallet_address, count(*)::int as swap_count
-      from public.wif_swap_proofs
-      ${wallet ? sql`where wallet_address = ${wallet}` : sql``}
+      from public.verification_records
+      where chain_id = ${WIF_CHAIN_ID} and transaction_hash is not null
+        and evidence ? 'wifSwap'
+        ${wallet ? sql`and wallet_address = ${wallet}` : sql``}
       group by wallet_address
     ), scores as (
       select coalesce(m.wallet_address, s.wallet_address) as wallet_address,
@@ -82,16 +86,52 @@ export async function getXpDashboard(wallet: string) {
 }
 
 export async function hasWifSwapProof(wallet: string, transactionHash: string) {
-  const [proof] = await drizzle(getDb()).select({ transactionHash: wifSwapProofs.transactionHash })
-    .from(wifSwapProofs)
-    .where(and(eq(wifSwapProofs.walletAddress, wallet), eq(wifSwapProofs.transactionHash, transactionHash)))
-    .limit(1);
+  const [proof] = await drizzle(getDb()).execute<{ id: string }>(sql`
+    select id from public.verification_records
+    where chain_id = ${WIF_CHAIN_ID} and lower(transaction_hash) = ${transactionHash}
+      and wallet_address = ${wallet} and evidence ? 'wifSwap'
+  `);
   return !!proof;
 }
 
-export async function saveWifSwapProof(proof: typeof wifSwapProofs.$inferInsert) {
-  const [saved] = await drizzle(getDb()).insert(wifSwapProofs).values(proof)
-    .onConflictDoNothing({ target: wifSwapProofs.transactionHash })
-    .returning({ transactionHash: wifSwapProofs.transactionHash });
-  return !!saved;
+export async function saveWifSwapProof(proof: WifSwapProof) {
+  const evidence = JSON.stringify({ wifSwap: { direction: proof.direction, amount: proof.wifAmount } });
+  return drizzle(getDb()).transaction(async (tx) => {
+    await tx.execute(sql`
+      insert into public.quests (slug, title, description, category, verification_type, chain_id, is_published)
+      values (${WIF_SWAP_QUEST_SLUG}, 'Swap for XP', 'A verified ETH and WIF swap.', 'Onchain proof',
+        'transaction', ${WIF_CHAIN_ID}, false)
+      on conflict (slug) do nothing
+    `);
+    const [completion] = await tx.execute<{ id: string }>(sql`
+      insert into public.completions (wallet_address, quest_id, status)
+      select ${proof.walletAddress}, id, 'started' from public.quests
+      where slug = ${WIF_SWAP_QUEST_SLUG} and verification_type = 'transaction'
+        and chain_id = ${WIF_CHAIN_ID} and is_published = false
+      on conflict (wallet_address, quest_id) do update set updated_at = now()
+      returning id
+    `);
+    if (!completion) throw new Error("The swap quest record is unavailable.");
+
+    // Share the receipt with an existing weekly claim and award swap XP once.
+    const [saved] = await tx.execute<{ id: string }>(sql`
+      insert into public.verification_records as receipt
+        (completion_id, chain_id, wallet_address, transaction_hash, block_number, confirmations,
+          verification_method, evidence)
+      values (${completion.id}, ${WIF_CHAIN_ID}, ${proof.walletAddress}, ${proof.transactionHash},
+        ${proof.blockNumber.toString()}, ${proof.confirmations}, ${WIF_SWAP_VERIFICATION_METHOD}, ${evidence}::jsonb)
+      on conflict (chain_id, lower(transaction_hash)) where transaction_hash is not null do update
+        set evidence = receipt.evidence || excluded.evidence
+        where receipt.wallet_address = excluded.wallet_address and not (receipt.evidence ? 'wifSwap')
+      returning id
+    `);
+    if (saved) {
+      await tx.execute(sql`
+        update public.completions set status = 'verified', verified_at = now(),
+          submitted_at = coalesce(submitted_at, now()), updated_at = now()
+        where id = ${completion.id}
+      `);
+    }
+    return !!saved;
+  });
 }

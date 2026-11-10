@@ -37,7 +37,7 @@ Open `/swap` from the quest board or dashboard. Trade ETH and the official World
 
 Wallet connection and wallet verification are one-time awards of five XP each. Both are recorded on verified sign-in. The verified starter transaction proof adds five XP for proving the wallet address onchain. The dashboard totals these awards and displays the top ten wallets and your rank. Swap XP tracks confirmed activity.
 
-Apply `drizzle/0004_wif_swap_proofs.sql` to the dedicated Neon database before deploying this feature.
+Swap XP uses the existing Neon verification records and transaction uniqueness constraint. A receipt can retain its weekly quest proof alongside its one-time swap XP.
 
 ## Architecture
 
