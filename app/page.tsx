@@ -226,6 +226,12 @@ export default function Home() {
       <Link href="/wif" className="primary-button">Open weekly quest <span>↗</span></Link>
     </aside>
 
+    <aside className="weekly-wif-entry shell" aria-label="Swap XP quest">
+      <div><span className="eyebrow">REPEATABLE QUEST · ROBINHOOD CHAIN</span><h2>Swap for XP.</h2>
+        <p>Verify an ETH ↔ $WIF swap to earn XP and move up the leaderboard.</p></div>
+      <Link href="/swap" className="primary-button">Open swap quest <span>↗</span></Link>
+    </aside>
+
     <section className="stats shell"><div><strong>01</strong><span>Discover your next step</span></div><div><strong>02</strong><span>Complete a useful action</span></div><div><strong>03</strong><span>Keep proof of your progress</span></div></section>
 
     <section className="section shell" id="how-it-works">

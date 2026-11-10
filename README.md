@@ -31,12 +31,20 @@ FlatQuest checks the receipt, its block timestamp, at least two confirmations, a
 
 Set `ROBINHOOD_MAINNET_RPC_URL` for a dedicated server RPC. The public Robinhood Chain mainnet RPC is used by default. Weekly evidence uses the existing Neon quest, completion and verification tables.
 
+## Swap quest and XP
+
+Open `/swap` from the quest board or dashboard. Trade ETH and the official World Is Flat token on the [Pons WIF trading page](https://ponsfamily.com/launchpad/0x5173b8eA6923c2d40267890D45C46a3480954773) with the same wallet you verified on FlatQuest, then paste the swap's transaction hash. The app checks the successful receipt, canonical block, two confirmations, the Uniswap v4 swap on the Pons ETH/WIF pool, and the wallet's WIF settlement. Each transaction can earn one swap XP.
+
+Wallet connection and wallet verification are one-time awards of five XP each. Both are recorded on verified sign-in. The verified starter transaction proof adds five XP for proving the wallet address onchain. The dashboard totals these awards and displays the top ten wallets and your rank. Swap XP tracks confirmed activity.
+
+Swap XP uses the existing Neon verification records and transaction uniqueness constraint. A receipt can retain its weekly quest proof alongside its one-time swap XP.
+
 ## Architecture
 
 - **Frontend:** Next.js, React and TypeScript.
 - **Wallet and chain:** injected EVM provider, Robinhood Chain testnet and viem signature verification.
 - **Database:** Neon Postgres.
-- **Server data access:** parameterized SQL through the `postgres` client in server-only code.
+- **Server data access:** parameterized SQL through the `postgres` client, with Drizzle ORM for XP and swap records.
 - **Hosting:** Vercel.
 - **Quality checks:** GitHub Actions running `npm test` and `npm run lint`.
 

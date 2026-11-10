@@ -54,7 +54,7 @@ The proof scope is deliberately limited to `successful_wallet_transaction`: a su
 
 The verifier rejects request bodies larger than 2 KB and uses a configurable `ROBINHOOD_TESTNET_RPC_URL`. If that variable is absent, it uses the public Robinhood Chain testnet RPC. Verification depends on the accuracy and availability of the configured RPC provider.
 
-A unique partial index on `(chain_id, lower(transaction_hash))` makes repeated submissions of the same chain transaction idempotent at the evidence-record level.
+A unique partial index on `(chain_id, lower(transaction_hash))` makes repeated submissions of the same chain transaction idempotent at the evidence-record level. The swap verifier adds a `wifSwap` evidence field once per verified mainnet receipt. Weekly WIF claims can share that receipt and preserve its swap evidence.
 
 ## Operational guidance
 

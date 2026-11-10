@@ -1,4 +1,5 @@
 import { getDb } from "@/lib/db";
+import { WIF_SWAP_VERIFICATION_METHOD } from "@/lib/wif-swap";
 import { getWifStreak, getWifWeek, WIF_CHAIN_ID, WIF_QUEST_SLUG, WIF_VERIFICATION_METHOD } from "@/lib/weekly-wif";
 
 export type WifProof = {
@@ -91,12 +92,16 @@ export async function saveWifProof(wallet: string, proof: WifProof) {
       blockTime: proof.blockTime
     };
     const [record] = await tx`
-      insert into public.verification_records
+      insert into public.verification_records as receipt
         (completion_id, chain_id, wallet_address, transaction_hash, block_number, confirmations,
          verification_method, evidence)
       values (${completion.id}, ${WIF_CHAIN_ID}, ${wallet}, ${proof.transactionHash}, ${proof.blockNumber},
         ${proof.confirmations}, ${WIF_VERIFICATION_METHOD}, ${JSON.stringify(evidence)}::jsonb)
-      on conflict (chain_id, lower(transaction_hash)) where transaction_hash is not null do nothing
+      on conflict (chain_id, lower(transaction_hash)) where transaction_hash is not null do update
+        set completion_id = excluded.completion_id, verification_method = excluded.verification_method,
+          evidence = receipt.evidence || excluded.evidence, confirmations = excluded.confirmations, verified_at = now()
+        where receipt.wallet_address = excluded.wallet_address
+          and receipt.verification_method = ${WIF_SWAP_VERIFICATION_METHOD}
       returning id
     `;
     if (!record) throw new WifTransactionUsedError();
