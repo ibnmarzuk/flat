@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
+import { getWifWeek } from "@/lib/weekly-wif";
+import WeeklyWifQuest from "./weekly-wif-quest";
 
 export const metadata: Metadata = {
-  title: "Testnet Token Swaps | FlatQuest",
-  description: "Use faucet Test ETH on Robinhood Chain testnet, swap it for Test LOX, and earn XP."
+  title: "Pass WIF Forward | FlatQuest",
+  description: "An optional weekly community challenge using the official $WIF token on Robinhood Chain mainnet."
 };
 
-export default function WeeklyWifPage(): never {
-  redirect("/swap");
+export const dynamic = "force-dynamic";
+
+export default function WeeklyWifPage() {
+  return <WeeklyWifQuest initialWeek={getWifWeek()} />;
 }
