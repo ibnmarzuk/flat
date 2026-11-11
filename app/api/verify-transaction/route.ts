@@ -163,7 +163,7 @@ export async function POST(request: Request) {
               block_number = excluded.block_number,
               confirmations = excluded.confirmations,
               verification_method = excluded.verification_method,
-              evidence = excluded.evidence,
+              evidence = public.verification_records.evidence || excluded.evidence,
               verified_at = now()
       `;
     });

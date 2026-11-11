@@ -19,7 +19,7 @@ export default function XpPanel({ xp }: {
     {xp ? <>
       <div className={styles.summary}>
         <span><strong>{xp.rank === null ? "—" : `#${xp.rank}`}</strong> leaderboard rank</span>
-        <span><strong>{xp.progress.swapCount}</strong> verified swaps</span>
+        <span><strong>{xp.progress.swapCount}</strong> verified swaps ({xp.progress.testnetSwapCount} testnet)</span>
       </div>
       <ul className={styles.milestones} aria-label="One-time XP quests">
         {milestones.map((milestone) => <li key={milestone.label}>
@@ -27,7 +27,7 @@ export default function XpPanel({ xp }: {
           <strong>{milestone.earned ? "Earned " : "+"}{milestone.points} XP</strong>
         </li>)}
       </ul>
-      <p>Connect and verify to earn both wallet awards. Complete the starter transaction proof to earn the address award. Each verified ETH ↔ $WIF swap adds {XP.swap} XP.</p>
+      <p>Connect and verify to earn both wallet awards. Complete the starter transaction proof to earn the address award. Each verified faucet-token conversion adds {XP.swap} XP.</p>
       <div className="weekly-dashboard-links">
         <Link href="/swap" prefetch={false}>Open swap quest ↗</Link>
         {!xp.progress.addressProven && <Link href="/#quest-prove-transaction">Prove your address ↗</Link>}

@@ -33,11 +33,15 @@ Set `ROBINHOOD_MAINNET_RPC_URL` for a dedicated server RPC. The public Robinhood
 
 ## Swap quest and XP
 
-Open `/swap` from the quest board or dashboard. Trade ETH and the official World Is Flat token on the [Pons WIF trading page](https://ponsfamily.com/launchpad/0x5173b8eA6923c2d40267890D45C46a3480954773) with the same wallet you verified on FlatQuest, then paste the swap's transaction hash. The app checks the successful receipt, canonical block, two confirmations, the Uniswap v4 swap on the Pons ETH/WIF pool, and the wallet's WIF settlement. Each transaction can earn one swap XP.
+Open `/swap` for the **Robinhood Chain testnet (46630) faucet demo**. Fund the same verified wallet with free Test ETH from [Robinhood's faucet](https://faucet.testnet.chain.robinhood.com). The app switches/adds the testnet in MetaMask before sending. Convert Test ETH ↔ Test WETH at 1:1 using WETH9 `deposit()` / `withdraw(uint256)`. This is wrapping/unwrapping, with valueless test tokens. It requires no trading-pool liquidity or token approvals.
 
-Wallet connection and wallet verification are one-time awards of five XP each. Both are recorded on verified sign-in. The verified starter transaction proof adds five XP for proving the wallet address onchain. The dashboard totals these awards and displays the top ten wallets and your rank. Swap XP tracks confirmed activity.
+Test WETH9: `0x0dd1df4fdd55808c9d530c9599bea5107f6b9b4e`, published in the [deployment registry](https://docs.hood.mainnet.games/contracts.html). The client estimates gas, checks the selected account/network, and submits directly from the wallet. It displays a copyable transaction hash immediately and links only to the testnet explorer. Unverified hashes are retained locally per wallet for retry; verified receipts are saved in the account's latest-conversions history.
 
-Swap XP uses the existing Neon verification records and transaction uniqueness constraint. A receipt can retain its weekly quest proof alongside its one-time swap XP.
+The server checks RPC chain ID, successful receipt, sender, transaction/block consistency, the exact WETH9 method and matching Deposit/Withdrawal event, canonical block inclusion, and two confirmations. Faucet claims, approvals, transfers, failed receipts, and unrelated/mainnet transactions earn no testnet swap XP. Each unique conversion hash earns **one XP**. Five conversions earn five XP; twenty earn twenty XP, without a second milestone bonus.
+
+Connection and signed wallet verification award five XP each once. The starter transaction proof awards five XP once. Existing mainnet swap awards are retained; the leaderboard shows total activity and the testnet count. Testnet conversions are demo receipts and do not establish mainnet $WIF activity for hackathon eligibility.
+
+All XP uses existing Neon verification records and transaction uniqueness; no schema migration is required. Generic transaction proof and conversion evidence are merged when the same testnet receipt is used for both. Existing weekly mainnet proof remains available separately at `/wif`.
 
 ## Architecture
 
