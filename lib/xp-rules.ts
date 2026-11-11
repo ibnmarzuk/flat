@@ -9,6 +9,7 @@ export type XpProgress = {
   xp: number;
   swapCount: number;
   testnetSwapCount: number;
+  testnetTradeCount: number;
   walletVerified: boolean;
   addressProven: boolean;
 };

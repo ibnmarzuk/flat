@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { createPublicClient, http, TransactionReceiptNotFoundError, TransactionNotFoundError, type Hash } from "viem";
 import { getAuthenticatedWallet } from "@/lib/auth";
 import { consumeWalletRateLimit } from "@/lib/rate-limit";
-import { findTestnetSwap, TESTNET_CHAIN_ID, TESTNET_RPC } from "@/lib/testnet-swap";
+import { TESTNET_CHAIN_ID, TESTNET_RPC } from "@/lib/testnet-swap";
+import { findTestnetTrade } from "@/lib/testnet-trade";
 import { getXpProgress, getTestnetSwapHistory, hasTestnetSwapProof, saveTestnetSwapProof } from "@/lib/xp-progress";
 import { isValidWalletAddress } from "@/lib/wallet-auth-policy";
 
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
   const hash = input.transactionHash.toLowerCase() as Hash;
   try {
     const wallet = await getAuthenticatedWallet(request.headers.get("cookie"));
-    if (!wallet || wallet !== input.walletAddress.toLowerCase()) return failure("Sign in with the wallet that made this conversion.", 401);
+    if (!wallet || wallet !== input.walletAddress.toLowerCase()) return failure("Sign in with the wallet that made this swap.", 401);
     const rate = await consumeWalletRateLimit("testnet_swap_verify", wallet, 60, 3600);
     if (!rate.allowed) return failure("Too many proof checks. Try again later.", 429, { "Retry-After": String(rate.retryAfterSeconds) });
     let alreadyRecorded = await hasTestnetSwapProof(wallet, hash);
@@ -61,9 +62,9 @@ export async function POST(request: Request) {
         return failure("Inconsistent transaction evidence. Try again.", 503);
       }
       if (receipt.status !== "success") return failure("This testnet transaction failed.", 422);
-      if (receipt.from.toLowerCase() !== wallet) return failure("This conversion belongs to a different wallet.", 403);
-      const swap = findTestnetSwap(receipt, transaction);
-      if (!swap) return failure("Use a completed Test ETH ↔ Test WETH wrap or unwrap from this demo. Faucet claims and token transfers do not count.", 422);
+      if (receipt.from.toLowerCase() !== wallet) return failure("This swap belongs to a different wallet.", 403);
+      const swap = findTestnetTrade(receipt, transaction);
+      if (!swap) return failure("Use a completed Test ETH ↔ Test LOX pool swap. Wrapping, faucet claims, approvals and transfers do not count.", 422);
       const [block, head] = await Promise.all([
         testnet.getBlock({ blockNumber: receipt.blockNumber, includeTransactions: false }),
         testnet.getBlockNumber({ cacheTime: 0 })
