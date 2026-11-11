@@ -2,9 +2,11 @@ import Link from "next/link";
 import { XP, type XpProgress } from "@/lib/xp-rules";
 import type { XpStanding } from "@/lib/xp-progress";
 import styles from "@/app/swap/xp.module.css";
+import { getXpLevel } from "@/lib/xp-levels";
 
-export default function XpPanel({ xp }: {
+export default function XpPanel({ xp, wallet }: {
   xp: { progress: XpProgress; rank: number | null; standings: XpStanding[] } | null;
+  wallet: string;
 }) {
   const milestones = [
     { label: "Connect wallet", points: XP.connectWallet, earned: xp?.progress.walletVerified },
@@ -18,6 +20,7 @@ export default function XpPanel({ xp }: {
     </div>
     {xp ? <>
       <div className={styles.summary}>
+        <span><strong>{getXpLevel(xp.progress.xp).name}</strong> current level</span>
         <span><strong>{xp.rank === null ? "—" : `#${xp.rank}`}</strong> leaderboard rank</span>
         <span><strong>{xp.progress.swapCount}</strong> rewarded actions ({xp.progress.testnetTradeCount} testnet token swaps)</span>
       </div>
@@ -29,6 +32,8 @@ export default function XpPanel({ xp }: {
       </ul>
       <p>Connect and verify to earn both wallet awards. Complete the starter transaction proof to earn the address award. Each verified Test ETH ↔ Test LOX swap adds {XP.swap} XP.</p>
       <div className="weekly-dashboard-links">
+        <Link href={`/passport/${wallet}`}>Open your WIF Passport ↗</Link>
+        <Link href={`/invite/${wallet}`}>Invite a wallet ↗</Link>
         <Link href="/swap" prefetch={false}>Open swap quest ↗</Link>
         {!xp.progress.addressProven && <Link href="/#quest-prove-transaction">Prove your address ↗</Link>}
       </div>
