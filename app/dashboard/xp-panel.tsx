@@ -34,7 +34,8 @@ export default function XpPanel({ xp, wallet }: {
       <div className="weekly-dashboard-links">
         <Link href={`/passport/${wallet}`}>Open your WIF Passport ↗</Link>
         <Link href={`/invite/${wallet}`}>Invite a wallet ↗</Link>
-        <Link href="/swap" prefetch={false}>Open swap quest ↗</Link>
+        <Link href="/swap" prefetch={false}>Open testnet quest ↗</Link>
+        <Link href="/wif">Pass WIF Forward ↗</Link>
         {!xp.progress.addressProven && <Link href="/#quest-prove-transaction">Prove your address ↗</Link>}
       </div>
       <h3 className={styles.standingsTitle}>XP leaderboard</h3>
