@@ -270,7 +270,7 @@ export default function SwapQuest() {
     <header className={styles.hero}>
       <div><span className={styles.kicker}>TOKEN SWAP · ROBINHOOD CHAIN TESTNET</span>
         <h1>Test a swap.<br />Earn <em>XP.</em></h1>
-        <p>Convert faucet Test ETH ↔ Test LOX at 1:1. Copy your onchain transaction hash and earn {XP.swap} XP for each verified swap.</p>
+        <p>Trade faucet Test ETH ↔ Test LOX using a live pool quote. Copy your onchain transaction hash and earn {XP.swap} XP for each verified swap.</p>
       </div>
       <aside className={styles.week} aria-label="Your demo progress">
         <span className={styles.kicker}>YOUR QUEST SCORE</span>
