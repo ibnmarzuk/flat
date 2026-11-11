@@ -7,7 +7,9 @@ import { TESTNET_SWAP_QUEST_SLUG } from "@/lib/testnet-swap";
 import { WIF_EXPLORER, WIF_QUEST_SLUG } from "@/lib/weekly-wif";
 import WalletGate from "./wallet-gate";
 import XpPanel from "./xp-panel";
-import { getXpDashboard } from "@/lib/xp-progress";
+import SwapProofs from "./swap-proofs";
+import { TRADE_QUEST_SLUG } from "@/lib/testnet-trade";
+import { getTestnetSwapHistory, getXpDashboard } from "@/lib/xp-progress";
 import { getAuthenticatedWallet, SESSION_COOKIE } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -57,12 +59,13 @@ export default async function DashboardPage() {
       order by verified_at desc
       limit 1
     ) vr on true
-    where c.wallet_address = ${wallet} and q.slug not in (${WIF_QUEST_SLUG}, ${WIF_SWAP_QUEST_SLUG}, ${TESTNET_SWAP_QUEST_SLUG})
+    where c.wallet_address = ${wallet} and q.slug not in (${WIF_QUEST_SLUG}, ${WIF_SWAP_QUEST_SLUG}, ${TESTNET_SWAP_QUEST_SLUG}, ${TRADE_QUEST_SLUG})
     order by coalesce(c.verified_at, c.submitted_at, c.updated_at) desc
   `;
-  const [weekly, xp] = await Promise.all([
+  const [weekly, xp, swapProofs] = await Promise.all([
     getWifProgress(wallet).catch(() => null),
-    getXpDashboard(wallet).catch(() => null)
+    getXpDashboard(wallet).catch(() => null),
+    getTestnetSwapHistory(wallet).catch(() => null)
   ]);
   const latestWifProof = weekly?.recentProofs[0];
   const starterPath = [
@@ -87,6 +90,7 @@ export default async function DashboardPage() {
       <div className="dashboard-header"><div><span className="dashboard-kicker">YOUR ONCHAIN JOURNEY</span><h1>Your progress.<br/><em>Backed by proof.</em></h1><p>One place for your FlatQuest milestones and verifiable activity.</p></div><div className="dashboard-wallet"><small>CONNECTED WALLET</small><strong>{shortWallet(wallet)}</strong><a href={"https://explorer.testnet.chain.robinhood.com/address/" + wallet} target="_blank" rel="noreferrer">View on explorer ↗</a></div></div>
       <section className="dashboard-stats"><article><small>VERIFIED MILESTONES</small><strong>{verified}</strong><span>Wallet, network and transaction checks</span></article><article><small>SELF REPORTED</small><strong>{submitted}</strong><span>Learning activity recorded</span></article><article><small>QUESTS AVAILABLE</small><strong>{total}</strong><span>In the current starter path</span></article></section>
       <XpPanel xp={xp} />
+      <SwapProofs key={wallet} address={wallet} proofs={swapProofs} />
       <section className="dashboard-progress"><div className="dashboard-section-head"><div><span className="dashboard-kicker">YOUR JOURNEY</span><h2>Keep moving forward</h2></div><strong>{progress}%</strong></div><div className="dashboard-track"><span style={{width: progress + "%"}}/></div><p>{recorded} of {total} starter milestones recorded · {verified} verified · {submitted} self reported.</p></section>
       <section className="dashboard-progress">
         <div className="dashboard-section-head">

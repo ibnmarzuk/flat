@@ -101,3 +101,14 @@
 .receipt { display: grid; gap: 12px; min-width: 0; }
 .receipt code { overflow-wrap: anywhere; user-select: all; font-size: 13px; }
 .historyReceipt { padding-block: 16px; border-top: 1px solid var(--line); }
+
+.quote {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 10px;
+  background: #f3f7ec;
+  overflow-wrap: anywhere;
+}
+.quote span, .quote small { font-size: 12px; line-height: 1.5; }
+.quote strong { font-size: 18px; }

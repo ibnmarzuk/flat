@@ -19,7 +19,7 @@ export default function XpPanel({ xp }: {
     {xp ? <>
       <div className={styles.summary}>
         <span><strong>{xp.rank === null ? "—" : `#${xp.rank}`}</strong> leaderboard rank</span>
-        <span><strong>{xp.progress.swapCount}</strong> verified swaps ({xp.progress.testnetSwapCount} testnet)</span>
+        <span><strong>{xp.progress.swapCount}</strong> rewarded actions ({xp.progress.testnetTradeCount} testnet token swaps)</span>
       </div>
       <ul className={styles.milestones} aria-label="One-time XP quests">
         {milestones.map((milestone) => <li key={milestone.label}>
@@ -27,14 +27,14 @@ export default function XpPanel({ xp }: {
           <strong>{milestone.earned ? "Earned " : "+"}{milestone.points} XP</strong>
         </li>)}
       </ul>
-      <p>Connect and verify to earn both wallet awards. Complete the starter transaction proof to earn the address award. Each verified faucet-token conversion adds {XP.swap} XP.</p>
+      <p>Connect and verify to earn both wallet awards. Complete the starter transaction proof to earn the address award. Each verified Test ETH ↔ Test LOX swap adds {XP.swap} XP.</p>
       <div className="weekly-dashboard-links">
         <Link href="/swap" prefetch={false}>Open swap quest ↗</Link>
         {!xp.progress.addressProven && <Link href="/#quest-prove-transaction">Prove your address ↗</Link>}
       </div>
       <h3 className={styles.standingsTitle}>XP leaderboard</h3>
       {xp.standings.length ? <table className={styles.standings} aria-label="Top 10 wallets and your rank">
-        <thead><tr><th scope="col">Rank</th><th scope="col">Wallet</th><th scope="col">Swaps</th><th scope="col">XP</th></tr></thead>
+        <thead><tr><th scope="col">Rank</th><th scope="col">Wallet</th><th scope="col">Actions</th><th scope="col">XP</th></tr></thead>
         <tbody>{xp.standings.map((row) => <tr key={row.position} className={row.isYou ? styles.you : undefined}>
           <td>#{row.rank}</td><td>{row.walletLabel}{row.isYou && <strong> You</strong>}</td>
           <td>{row.swapCount}</td><td>{row.xp}</td>
