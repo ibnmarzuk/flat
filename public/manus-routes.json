@@ -1,1 +1,1 @@
-{"routes":[{"path":"/","title":"FlatQuest"},{"path":"/wif","title":"Pass WIF forward"},{"path":"/swap","title":"Test a swap"},{"path":"/dashboard","title":"FlatQuest dashboard"},{"path":"/quests/:slug","title":"Quest guide"}]}
+{"routes":[{"path":"/","title":"FlatQuest"},{"path":"/swap","title":"Test a swap"},{"path":"/dashboard","title":"FlatQuest dashboard"},{"path":"/quests/:slug","title":"Quest guide"}]}

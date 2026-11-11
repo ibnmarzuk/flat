@@ -220,12 +220,6 @@ export default function Home() {
       <div className="hero-bottom"><span>BUILT FOR THE NEXT WAVE</span><span>WORLD IS FLAT · ROBINHOOD CHAIN</span></div>
     </section>
 
-    <aside className="weekly-wif-entry shell" aria-label="Weekly WIF quest">
-      <div><span className="eyebrow">NEW EVERY MONDAY · ROBINHOOD CHAIN</span><h2>Pass $WIF forward.</h2>
-        <p>Welcome another wallet, verify your transfer, and build a weekly streak.</p></div>
-      <Link href="/wif" className="primary-button">Open weekly quest <span>↗</span></Link>
-    </aside>
-
     <aside className="weekly-wif-entry shell" aria-label="Swap XP quest">
       <div><span className="eyebrow">FAUCET DEMO · ROBINHOOD CHAIN TESTNET</span><h2>Swap for XP.</h2>
         <p>Convert faucet Test ETH ↔ Test WETH, copy the hash, and earn XP.</p></div>

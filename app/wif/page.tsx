@@ -1,14 +1,11 @@
 import type { Metadata } from "next";
-import { getWifWeek } from "@/lib/weekly-wif";
-import WeeklyWifQuest from "./weekly-wif-quest";
-
-export const dynamic = "force-dynamic";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "Pass WIF forward | FlatQuest",
-  description: "Send WIF to another wallet, verify the transfer on Robinhood Chain, and keep a weekly streak."
+  title: "Faucet Swap Demo | FlatQuest",
+  description: "Use faucet Test ETH on Robinhood Chain testnet, convert it to Test WETH, and earn XP."
 };
 
-export default function WeeklyWifPage() {
-  return <WeeklyWifQuest initialWeek={getWifWeek()} />;
+export default function WeeklyWifPage(): never {
+  redirect("/swap");
 }

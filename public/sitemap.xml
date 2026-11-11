@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://flatquest-preview.vercel.app/</loc></url>
-  <url><loc>https://flatquest-preview.vercel.app/wif</loc></url>
   <url><loc>https://flatquest-preview.vercel.app/swap</loc></url>
   <url><loc>https://flatquest-preview.vercel.app/dashboard</loc></url>
   <url><loc>https://flatquest-preview.vercel.app/quests/connect-wallet</loc></url>
