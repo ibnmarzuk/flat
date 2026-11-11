@@ -233,7 +233,7 @@ export default function WeeklyWifQuest({ initialWeek }: { initialWeek: ReturnTyp
           <p>Send WIF to someone you want to bring into the community. Verify your transfer, share the quest with them, and come back next week to keep your streak going.</p>
         </div>
         <aside className={styles.week}>
-          <span className={styles.kicker}>ROBINHOOD CHAIN MAINNET</span>
+          <span className={styles.kicker}>ROBINHOOD CHAIN MAINNET · 4663</span>
           <h2>Week of {shortDate.format(new Date(week.start))}</h2>
           <p>Closes {closeDate.format(new Date(week.end))} UTC.</p>
           <div className={styles.metrics}>
@@ -243,10 +243,28 @@ export default function WeeklyWifQuest({ initialWeek }: { initialWeek: ReturnTyp
         </aside>
       </header>
 
+      <section className={styles.info} aria-labelledby="wif-quick-start">
+        <div>
+          <span className={styles.kicker}>JUDGE QUICK START</span>
+          <h2 id="wif-quick-start">Three steps to a verified loop.</h2>
+          <ol>
+            <li><strong>Verify your wallet</strong> on Robinhood Chain mainnet.</li>
+            <li><strong>Send any positive WIF amount</strong> to a different wallet. Mainnet gas and WIF are required.</li>
+            <li><strong>Paste the transaction hash</strong> after two confirmations, then share the quest link.</li>
+          </ol>
+        </div>
+        <div className={styles.infoLinks}>
+          <span>Official WIF contract</span>
+          <a href={`${WIF_EXPLORER}/address/${WIF_TOKEN}`} target="_blank" rel="noreferrer">{WIF_TOKEN.slice(0, 10)}…{WIF_TOKEN.slice(-8)} ↗</a>
+          <span>Need a no-cost judge demo?</span>
+          <Link href="/swap" prefetch={false}>Use the Robinhood testnet swap quest ↗</Link>
+        </div>
+      </section>
+
       {statusError && <p role="status" className={styles.feedback}>{statusError}</p>}
       {checkingSession ? <p role="status" className={styles.feedback}>Checking wallet session…</p>
         : !wallet ? <section className={styles.connect}>
-          <div><h2>Start with your wallet</h2><p>Verify your wallet to save a weekly milestone and see your streak.</p></div>
+          <div><h2>Start with your wallet</h2><p>Verify your wallet to save a weekly milestone and see your streak. Never share a private key or recovery phrase.</p></div>
           <button className="primary-button" onClick={connect} disabled={connecting || retrySeconds > 0}>
             {connecting ? "Connecting…" : retrySeconds ? `Retry in ${retrySeconds}s` : "Verify wallet ↗"}
           </button>

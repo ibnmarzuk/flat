@@ -232,6 +232,15 @@ export default function Home() {
       <Link href="/swap" className="primary-button">Open swap quest <span>↗</span></Link>
     </aside>
 
+    <section className="judge-entry shell" aria-labelledby="judge-entry-title">
+      <div>
+        <span className="eyebrow">JUDGE QUICK START · NO MAINNET FUNDS REQUIRED</span>
+        <h2 id="judge-entry-title">See the full loop in minutes.</h2>
+        <p>Use faucet Test ETH on Robinhood Chain testnet, wrap it into Test WETH, and let FlatQuest verify the receipt before awarding XP.</p>
+      </div>
+      <div className="judge-steps" aria-label="Judge demo steps"><span><strong>01</strong> Connect</span><span><strong>02</strong> Convert</span><span><strong>03</strong> Verify</span><Link href="/swap" className="primary-button">Start judge demo <span>↗</span></Link></div>
+    </section>
+
     <section className="stats shell"><div><strong>01</strong><span>Discover your next step</span></div><div><strong>02</strong><span>Complete a useful action</span></div><div><strong>03</strong><span>Keep proof of your progress</span></div></section>
 
     <section className="section shell" id="how-it-works">
