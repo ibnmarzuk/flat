@@ -21,8 +21,8 @@ export async function GET(_request: Request, context: { params: Promise<{ wallet
       getXpDashboard(wallet),
       getWifProgress(wallet).catch(() => null),
       getTestnetSwapHistory(wallet).catch(() => []),
-      db<{ invited: number }[]>\`select count(*)::int as invited from public.wallet_referrals where lower(inviter_wallet) = ${wallet}\`,
-      db<{ slug: string; title: string; verified_at: Date | string; transaction_hash: string | null; chain_id: number | null }[]>\`
+      db<{ invited: number }[]>`select count(*)::int as invited from public.wallet_referrals where lower(inviter_wallet) = ${wallet}`,
+      db<{ slug: string; title: string; verified_at: Date | string; transaction_hash: string | null; chain_id: number | null }[]>`
         select q.slug, q.title, c.verified_at, vr.transaction_hash, vr.chain_id
         from public.completions c
         join public.quests q on q.id = c.quest_id
