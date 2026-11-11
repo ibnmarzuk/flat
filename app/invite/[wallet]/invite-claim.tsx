@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useWalletSession } from "@/app/wallet-session";
 
 export default function InviteClaim({ inviter }: { inviter: string }) {
-  const { wallet, checkingSession } = useWalletSession();
+  const { wallet, checkingSession, connecting, connect } = useWalletSession();
   const [status, setStatus] = useState("Connect and verify your wallet to record this invitation.");
   const [done, setDone] = useState(false);
 
@@ -26,5 +26,5 @@ export default function InviteClaim({ inviter }: { inviter: string }) {
     return () => { active = false; };
   }, [wallet, checkingSession, inviter, done]);
 
-  return <p className="passport-invite-status" role="status">{status}</p>;
+  return <div><p className="passport-invite-status" role="status">{status}</p>{!wallet && <button className="passport-button" type="button" disabled={checkingSession || connecting} onClick={() => void connect()}>{connecting ? "Connecting wallet…" : "Connect and verify wallet ↗"}</button>}</div>;
 }
