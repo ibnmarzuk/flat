@@ -26,7 +26,7 @@ export default async function PassportPage({ params }: { params: Promise<{ walle
     getXpDashboard(wallet),
     getWifProgress(wallet).catch(() => null),
     getTestnetSwapHistory(wallet).catch(() => []),
-    db<{ invited: number; wallets: string[] }[]>`select count(*)::int as invited, coalesce(array_agg(invitee_wallet order by created_at desc), array[]::text[]) as wallets from public.wallet_referrals where lower(inviter_wallet) = ${wallet}`,
+    db<{ invited: number; wallets: string[] }[]>`select count(*)::int as invited, coalesce(array_agg(invitee_wallet order by created_at desc), array[]::text[]) as wallets from public.wallet_referrals where lower(inviter_wallet) = ${wallet}`.catch(() => [{ invited: 0, wallets: [] }]),
     db<{ slug: string; title: string; verified_at: Date | string; transaction_hash: string | null; chain_id: number | null }[]>`
       select q.slug, q.title, c.verified_at, vr.transaction_hash, vr.chain_id
       from public.completions c join public.quests q on q.id = c.quest_id
