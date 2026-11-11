@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
   try {
     const db = getDb();
-    const rows = await db<{ inviter_wallet: string }[]>\`
+    const rows = await db<{ inviter_wallet: string }[]>`
       insert into public.wallet_referrals (inviter_wallet, invitee_wallet)
       select inviter.wallet_address, invitee.wallet_address
       from public.profiles inviter, public.profiles invitee
@@ -31,11 +31,11 @@ export async function POST(request: Request) {
         and lower(invitee.wallet_address) = ${invitee.toLowerCase()}
       on conflict (invitee_wallet) do nothing
       returning inviter_wallet
-    \`;
+    `;
     if (rows[0]) return NextResponse.json({ recorded: true });
-    const existing = await db<{ inviter_wallet: string }[]>\`
+    const existing = await db<{ inviter_wallet: string }[]>`
       select inviter_wallet from public.wallet_referrals where lower(invitee_wallet) = ${invitee.toLowerCase()} limit 1
-    \`;
+    `;
     if (existing[0]) return NextResponse.json({ recorded: false, message: "An invite has already been attributed to this wallet." });
     return NextResponse.json({ error: "The inviter or your wallet profile is not ready yet." }, { status: 409 });
   } catch {
