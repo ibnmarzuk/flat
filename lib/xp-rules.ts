@@ -8,6 +8,7 @@ export const XP = {
 export type XpProgress = {
   xp: number;
   swapCount: number;
+  testnetSwapCount: number;
   walletVerified: boolean;
   addressProven: boolean;
 };

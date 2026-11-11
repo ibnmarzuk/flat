@@ -227,8 +227,8 @@ export default function Home() {
     </aside>
 
     <aside className="weekly-wif-entry shell" aria-label="Swap XP quest">
-      <div><span className="eyebrow">REPEATABLE QUEST · ROBINHOOD CHAIN</span><h2>Swap for XP.</h2>
-        <p>Verify an ETH ↔ $WIF swap to earn XP and move up the leaderboard.</p></div>
+      <div><span className="eyebrow">FAUCET DEMO · ROBINHOOD CHAIN TESTNET</span><h2>Swap for XP.</h2>
+        <p>Convert faucet Test ETH ↔ Test WETH, copy the hash, and earn XP.</p></div>
       <Link href="/swap" className="primary-button">Open swap quest <span>↗</span></Link>
     </aside>
 

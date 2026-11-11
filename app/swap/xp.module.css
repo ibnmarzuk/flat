@@ -75,3 +75,29 @@
 @media (max-width: 420px) {
   .standings th, .standings td { padding-inline: 4px; }
 }
+
+.demoNotice {
+  padding: 18px 22px;
+  margin-bottom: 24px;
+  border: 1px solid #d2e0c0;
+  border-radius: 14px;
+  background: #f3f7ec;
+  line-height: 1.5;
+}
+.demoNotice p { margin: 6px 0; }
+.demoNotice a { color: #365422; font-weight: 700; }
+.select {
+  min-width: 0;
+  width: 100%;
+  padding: 12px 8px;
+  color: var(--ink);
+  background: #fafbf8;
+  border: 1px solid #c6d2bd;
+  border-radius: 9px;
+  font: inherit;
+}
+.network { color: #45612e; font-weight: 700; }
+.balances { overflow-wrap: anywhere; font-size: 13px; }
+.receipt { display: grid; gap: 12px; min-width: 0; }
+.receipt code { overflow-wrap: anywhere; user-select: all; font-size: 13px; }
+.historyReceipt { padding-block: 16px; border-top: 1px solid var(--line); }

@@ -5,6 +5,7 @@ import { XP, type XpProgress } from "@/lib/xp-rules";
 
 import { WIF_CHAIN_ID } from "@/lib/weekly-wif";
 import { WIF_SWAP_QUEST_SLUG, WIF_SWAP_VERIFICATION_METHOD } from "@/lib/wif-swap";
+import { TESTNET_CHAIN_ID, TESTNET_SWAP_QUEST_SLUG, TESTNET_SWAP_METHOD } from "@/lib/testnet-swap";
 
 type WifSwapProof = {
   walletAddress: string;
@@ -15,7 +16,7 @@ type WifSwapProof = {
   wifAmount: string;
 };
 
-const emptyProgress: XpProgress = { xp: 0, swapCount: 0, walletVerified: false, addressProven: false };
+const emptyProgress: XpProgress = { xp: 0, swapCount: 0, testnetSwapCount: 0, walletVerified: false, addressProven: false };
 const standingsLimit = 10;
 
 export type XpStanding = XpProgress & {
@@ -38,10 +39,12 @@ function scoreTotals(wallet?: string) {
         ${wallet ? sql`and c.wallet_address = ${wallet}` : sql``}
       group by c.wallet_address
     ), swaps as (
-      select wallet_address, count(*)::int as swap_count
+      select wallet_address, count(*)::int as swap_count,
+        count(*) filter (where chain_id = ${TESTNET_CHAIN_ID} and evidence ? 'testnetSwap')::int as testnet_swap_count
       from public.verification_records
-      where chain_id = ${WIF_CHAIN_ID} and transaction_hash is not null
-        and evidence ? 'wifSwap'
+      where transaction_hash is not null and (
+        (chain_id = ${WIF_CHAIN_ID} and evidence ? 'wifSwap') or
+        (chain_id = ${TESTNET_CHAIN_ID} and evidence ? 'testnetSwap'))
         ${wallet ? sql`and wallet_address = ${wallet}` : sql``}
       group by wallet_address
     ), scores as (
@@ -49,6 +52,7 @@ function scoreTotals(wallet?: string) {
         coalesce(m.wallet_verified, false) as wallet_verified,
         coalesce(m.address_proven, false) as address_proven,
         coalesce(s.swap_count, 0) as swap_count,
+        coalesce(s.testnet_swap_count, 0) as testnet_swap_count,
         (case when m.wallet_verified then ${XP.connectWallet + XP.verifyWallet}::int else 0 end
          + case when m.address_proven then ${XP.addressProof}::int else 0 end
          + coalesce(s.swap_count, 0) * ${XP.swap}::int) as xp
@@ -57,6 +61,7 @@ function scoreTotals(wallet?: string) {
 }
 
 const progressColumns = sql`xp, swap_count as "swapCount",
+  testnet_swap_count as "testnetSwapCount",
   wallet_verified as "walletVerified", address_proven as "addressProven"`;
 
 export async function getXpProgress(wallet: string): Promise<XpProgress> {
@@ -65,6 +70,77 @@ export async function getXpProgress(wallet: string): Promise<XpProgress> {
     select ${progressColumns} from scores
   `);
   return row ?? emptyProgress;
+}
+
+export type TestnetSwapProof = {
+  walletAddress: string;
+  transactionHash: string;
+  blockNumber: bigint;
+  confirmations: number;
+  direction: "wrap" | "unwrap";
+  amount: string;
+};
+
+export type TestnetSwapHistory = {
+  transactionHash: string;
+  direction: "wrap" | "unwrap";
+  amount: string;
+};
+
+export async function getTestnetSwapHistory(wallet: string) {
+  return [...await drizzle(getDb()).execute<TestnetSwapHistory>(sql`
+    select transaction_hash as "transactionHash", evidence->'testnetSwap'->>'direction' as direction,
+      evidence->'testnetSwap'->>'amount' as amount
+    from public.verification_records
+    where chain_id = ${TESTNET_CHAIN_ID} and wallet_address = ${wallet} and evidence ? 'testnetSwap'
+      and transaction_hash is not null
+    order by verified_at desc, id desc limit 10
+  `)];
+}
+
+export async function hasTestnetSwapProof(wallet: string, hash: string) {
+  const [row] = await drizzle(getDb()).execute<{ id: string }>(sql`
+    select id from public.verification_records
+    where chain_id = ${TESTNET_CHAIN_ID} and lower(transaction_hash) = ${hash}
+      and wallet_address = ${wallet} and evidence ? 'testnetSwap'
+  `);
+  return !!row;
+}
+
+export async function saveTestnetSwapProof(proof: TestnetSwapProof) {
+  const evidence = JSON.stringify({ testnetSwap: { direction: proof.direction, amount: proof.amount } });
+  return drizzle(getDb()).transaction(async (tx) => {
+    await tx.execute(sql`
+      insert into public.quests (slug, title, description, category, verification_type, chain_id, is_published)
+      values (${TESTNET_SWAP_QUEST_SLUG}, 'Testnet swap for XP', 'Faucet ETH and test WETH conversion.',
+        'Onchain proof', 'transaction', ${TESTNET_CHAIN_ID}, false)
+      on conflict (slug) do nothing
+    `);
+    const [completion] = await tx.execute<{ id: string }>(sql`
+      insert into public.completions (wallet_address, quest_id, status)
+      select ${proof.walletAddress}, id, 'started' from public.quests
+      where slug = ${TESTNET_SWAP_QUEST_SLUG} and verification_type = 'transaction'
+        and chain_id = ${TESTNET_CHAIN_ID} and is_published = false
+      on conflict (wallet_address, quest_id) do update set updated_at = now()
+      returning id
+    `);
+    if (!completion) throw new Error("The testnet quest is unavailable.");
+    const [saved] = await tx.execute<{ id: string }>(sql`
+      insert into public.verification_records as receipt
+        (completion_id, chain_id, wallet_address, transaction_hash, block_number, confirmations, verification_method, evidence)
+      values (${completion.id}, ${TESTNET_CHAIN_ID}, ${proof.walletAddress}, ${proof.transactionHash},
+        ${proof.blockNumber.toString()}, ${proof.confirmations}, ${TESTNET_SWAP_METHOD}, ${evidence}::jsonb)
+      on conflict (chain_id, lower(transaction_hash)) where transaction_hash is not null do update
+        set evidence = receipt.evidence || excluded.evidence
+        where receipt.wallet_address = excluded.wallet_address and not (receipt.evidence ? 'testnetSwap')
+      returning id
+    `);
+    if (saved) await tx.execute(sql`
+      update public.completions set status = 'verified', verified_at = now(),
+        submitted_at = coalesce(submitted_at, now()), updated_at = now() where id = ${completion.id}
+    `);
+    return !!saved;
+  });
 }
 
 export async function getXpDashboard(wallet: string) {

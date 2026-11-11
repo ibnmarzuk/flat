@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { getDb } from "@/lib/db";
 import { getWifProgress } from "@/lib/wif-progress";
 import { WIF_SWAP_QUEST_SLUG } from "@/lib/wif-swap";
+import { TESTNET_SWAP_QUEST_SLUG } from "@/lib/testnet-swap";
 import { WIF_EXPLORER, WIF_QUEST_SLUG } from "@/lib/weekly-wif";
 import WalletGate from "./wallet-gate";
 import XpPanel from "./xp-panel";
@@ -56,7 +57,7 @@ export default async function DashboardPage() {
       order by verified_at desc
       limit 1
     ) vr on true
-    where c.wallet_address = ${wallet} and q.slug not in (${WIF_QUEST_SLUG}, ${WIF_SWAP_QUEST_SLUG})
+    where c.wallet_address = ${wallet} and q.slug not in (${WIF_QUEST_SLUG}, ${WIF_SWAP_QUEST_SLUG}, ${TESTNET_SWAP_QUEST_SLUG})
     order by coalesce(c.verified_at, c.submitted_at, c.updated_at) desc
   `;
   const [weekly, xp] = await Promise.all([
