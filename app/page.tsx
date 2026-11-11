@@ -220,17 +220,20 @@ export default function Home() {
       <div className="hero-bottom"><span>BUILT FOR THE NEXT WAVE</span><span>WORLD IS FLAT · ROBINHOOD CHAIN</span></div>
     </section>
 
-    <aside className="weekly-wif-entry shell" aria-label="Weekly WIF quest">
-      <div><span className="eyebrow">NEW EVERY MONDAY · ROBINHOOD CHAIN</span><h2>Pass $WIF forward.</h2>
-        <p>Welcome another wallet, verify your transfer, and build a weekly streak.</p></div>
-      <Link href="/wif" className="primary-button">Open weekly quest <span>↗</span></Link>
-    </aside>
-
     <aside className="weekly-wif-entry shell" aria-label="Swap XP quest">
       <div><span className="eyebrow">TOKEN SWAP · ROBINHOOD CHAIN TESTNET</span><h2>Swap for XP.</h2>
         <p>Swap faucet Test ETH ↔ Test LOX on Robinhood testnet. Verify the hash in your dashboard and earn XP.</p></div>
       <Link href="/swap" className="primary-button">Open swap quest <span>↗</span></Link>
     </aside>
+
+    <section className="judge-entry shell" aria-labelledby="judge-entry-title">
+      <div>
+        <span className="eyebrow">JUDGE QUICK START · NO MAINNET FUNDS REQUIRED</span>
+        <h2 id="judge-entry-title">See the full loop in minutes.</h2>
+        <p>Use faucet Test ETH on Robinhood Chain testnet, swap it for Test LOX, and let FlatQuest verify the receipt before awarding XP.</p>
+      </div>
+      <div className="judge-steps" aria-label="Judge demo steps"><span><strong>01</strong> Connect</span><span><strong>02</strong> Swap</span><span><strong>03</strong> Verify</span><Link href="/swap" className="primary-button">Start judge demo <span>↗</span></Link></div>
+    </section>
 
     <section className="stats shell"><div><strong>01</strong><span>Discover your next step</span></div><div><strong>02</strong><span>Complete a useful action</span></div><div><strong>03</strong><span>Keep proof of your progress</span></div></section>
 

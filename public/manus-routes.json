@@ -1,0 +1,1 @@
+{"routes":[{"path":"/","title":"FlatQuest"},{"path":"/swap","title":"Test a swap"},{"path":"/dashboard","title":"FlatQuest dashboard"},{"path":"/quests/:slug","title":"Quest guide"}]}
