@@ -22,7 +22,7 @@ type WalletProgress = { wallet: string; progress?: XpProgress; proofs?: Proof[];
 type Feedback = { wallet: string; message: string; transactionHash?: string; error?: boolean };
 
 export default function SwapQuest() {
-  const { wallet, chainId, setChainId, checkingSession, connecting, connect, notice, retrySeconds,
+  const { wallet, chainId, setChainId, checkingSession, connecting, connect, notice, setNotice, retrySeconds,
     getWalletProvider, isCurrentWallet, expireSession } = useWalletSession();
   const [loaded, setLoaded] = useState<WalletProgress | null>(null);
   const [reload, setReload] = useState(0);
@@ -133,6 +133,20 @@ export default function SwapQuest() {
     } catch {
       setCopyStatus({ wallet, message: "Select the full hash below and copy it manually." });
     }
+  }
+
+  async function addTestToken() {
+    const provider = await getWalletProvider();
+    if (!provider) { setNotice("Open FlatQuest in a browser with MetaMask."); return; }
+    try {
+      const selected = await selectWalletNetwork(provider, network);
+      setChainId(selected);
+      if (selected !== TESTNET_CHAIN_HEX) throw new Error("Select Robinhood Chain testnet before adding Test LOX.");
+      const accepted = await provider.request({ method: "wallet_watchAsset", params: [{ type: "ERC20", options: {
+        address: TRADE_TOKEN, symbol: "tLOX", decimals: 18
+      } }] });
+      setNotice(accepted === false ? "Test LOX was not added." : "Test LOX is now available in your wallet token list.");
+    } catch (error) { setNotice(error instanceof Error ? error.message : "Your wallet could not add Test LOX automatically. Copy the token address from this page instead."); }
   }
 
   async function recordHash(address: string, transactionHash: string) {
@@ -287,7 +301,8 @@ export default function SwapQuest() {
     <div className={xpStyles.demoNotice}>
       <strong>Demo tokens only · Chain ID 46630</strong>
       <p>Test ETH and Test LOX are demo tokens. The Loxley testnet pool quotes a changing exchange rate, with a 0.3% pool fee and 1% slippage protection.</p>
-      <a href={TESTNET_FAUCET} target="_blank" rel="noreferrer">Get free Test ETH from the Robinhood faucet ↗</a>
+      <div className={styles.actions}><a href={TESTNET_FAUCET} target="_blank" rel="noreferrer">Get free Test ETH from the Robinhood faucet ↗</a><button className={styles.secondary} type="button" onClick={() => void addTestToken()}>Add Test LOX to wallet</button></div>
+      <code className="token-address">{TRADE_TOKEN}</code>
     </div>
     {notice && <p className={styles.feedback} role="status">{notice}</p>}
     {checkingSession ? <p role="status">Checking wallet session…</p> : !wallet ? <section className={styles.connect}>

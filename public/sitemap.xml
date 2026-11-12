@@ -2,6 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://flatquest-preview.vercel.app/</loc></url>
   <url><loc>https://flatquest-preview.vercel.app/swap</loc></url>
+  <url><loc>https://flatquest-preview.vercel.app/send</loc></url>
   <url><loc>https://flatquest-preview.vercel.app/dashboard</loc></url>
   <url><loc>https://flatquest-preview.vercel.app/quests/connect-wallet</loc></url>
   <url><loc>https://flatquest-preview.vercel.app/quests/robinhood-testnet</loc></url>

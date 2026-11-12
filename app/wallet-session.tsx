@@ -72,6 +72,7 @@ function useSessionState() {
   const [chainId, setChainId] = useState("");
   const [checkingSession, setCheckingSession] = useState(true);
   const [connecting, setConnecting] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
   const [notice, setNotice] = useState("");
   const [retryAt, setRetryAt] = useState(0);
   const [retrySeconds, setRetrySeconds] = useState(0);
@@ -277,9 +278,42 @@ function useSessionState() {
     }
   }
 
+  async function disconnect() {
+    if (disconnecting) return;
+    setDisconnecting(true);
+    setNotice("Disconnecting FlatQuest from your wallet…");
+    let walletPermissionRevoked = false;
+    try {
+      const provider = providerRef.current || await discoverWallet();
+      await revokeSession();
+      if (provider) {
+        try {
+          await provider.request({ method: "wallet_revokePermissions", params: [{ eth_accounts: {} }] });
+          walletPermissionRevoked = true;
+        } catch {
+          // Not every EIP-1193 wallet implements permission revocation. The
+          // FlatQuest session is still revoked and no account stays active.
+        }
+      }
+      activeAccount.current = "";
+      walletVersion.current += 1;
+      setAccount("");
+      setSession("");
+      setRetryAt(0);
+      setNotice(walletPermissionRevoked
+        ? "Wallet disconnected. FlatQuest access was also removed from your wallet."
+        : "FlatQuest is disconnected. This wallet does not support website permission removal; remove FlatQuest in its Connected sites menu if it still appears there.");
+    } catch {
+      setSession("");
+      setNotice("FlatQuest is disconnected, but the wallet permission could not be checked.");
+    } finally {
+      setDisconnecting(false);
+    }
+  }
+
   return {
     account: account || wallet, wallet, chainId, checkingSession, connecting,
-    notice, setNotice, retrySeconds, connect, getWalletProvider, setChainId,
+    disconnecting, notice, setNotice, retrySeconds, connect, disconnect, getWalletProvider, setChainId,
     isCurrentWallet, expireSession
   };
 }
@@ -289,7 +323,7 @@ const WalletSessionContext = createContext<ReturnType<typeof useSessionState> | 
 export function WalletSession({ children }: { children: ReactNode }) {
   const session = useSessionState();
   return <WalletSessionContext.Provider value={session}>
-    {session.notice && <div className="notice global-notice" role="status">
+    {session.notice && <div className="notice global-notice" role="status" aria-live="polite">
       <span aria-hidden="true">i</span>
       {session.notice}
       <button onClick={() => session.setNotice("")} aria-label="Dismiss message">×</button>

@@ -10,9 +10,11 @@ FlatQuest is a guided onboarding and quest platform for the World Is Flat ecosys
 - Quest detail pages backed by Neon Postgres content and guided steps.
 - Injected EVM wallet connection and Robinhood Chain testnet detection and switching.
 - Wallet sign-in using a short-lived, single-use nonce and an EIP-191 signature.
-- HTTP-only wallet session cookies and server-side session revocation.
+- HTTP-only wallet session cookies, server-side revocation, and in-app wallet permission revocation for wallets that support `wallet_revokePermissions`.
 - Neon-backed profiles, quest progress, and verification evidence.
 - Personal dashboard with progress summaries and verification history.
+- Public, shareable WIF Passports with XP, level, streak, badges, referrals and explorer-backed proof.
+- Wallet-linked invite attribution and a leaderboard scored from verified activity and successful referrals.
 - Server-side transaction verification for the `prove-transaction` quest.
 - Persistent, atomic wallet-scoped rate limits for authentication and transaction verification.
 - Automated Node test suite and ESLint checks in GitHub Actions.
@@ -27,7 +29,7 @@ The proof is intentionally scoped to **a successful transaction sent by the auth
 
 The faucet-funded onboarding path remains on Robinhood Chain testnet and does not require users to buy or hold $WIF. The optional `/wif` route restores the Pass WIF Forward weekly community challenge on Robinhood Chain mainnet. Participants send the official $WIF token directly from their own wallet to another wallet. FlatQuest verifies the official token Transfer event, sender, recipient, amount, block and confirmations. The tokens never pass through FlatQuest. Mainnet verification uses `ROBINHOOD_MAINNET_RPC_URL` when configured and otherwise the public Robinhood mainnet RPC. The `/wif/example` page provides a read-only demonstration using a fixed public transfer and never writes a weekly milestone.
 
-The public `/passport/<wallet>` page summarizes XP, level, leaderboard rank, weekly WIF streak, verified milestones and explorer receipts. Levels are Newcomer (0 XP), Explorer (25 XP), Builder (75 XP) and WIF Guide (150 XP). The `/invite/<wallet>` flow attributes a new wallet to its inviter after the invitee signs in. Referral attribution is one wallet per invitee and does not currently award XP. The referral migration is `drizzle/0005_wallet_referrals.sql` and must be applied before referral counts and invite claims are enabled in a deployed environment.
+The public `/passport/<wallet>` page summarizes XP, level, leaderboard rank, testnet quest streak, verified milestones and explorer receipts. Levels are Newcomer (0 XP), Explorer (25 XP), Builder (75 XP) and WIF Guide (150 XP). The `/invite/<wallet>` flow attributes a new wallet to its inviter after the invitee signs in. Referral attribution is one wallet per invitee and awards the inviter ten XP. Migration `drizzle/0005_wallet_referrals.sql` adds the indexed referral table; durable verification evidence keeps invite attribution available during a rolling deployment before that migration is applied.
 
 $WIF is not simulated on testnet. Test ETH and Test LOX are faucet-funded test assets; they do not represent mainnet WIF or monetary value. The WIF community challenge is optional and separate from the testnet onboarding path.
 
@@ -42,6 +44,16 @@ The authenticated quote endpoint validates the chain, router/factory relationshi
 The server validates successful receipt, matching transaction and block, sender, exact direct-swap calldata/path/recipient, the allowlisted pair's Swap event, both token settlements, canonical inclusion and two confirmations. Faucet claims, approvals, ordinary transfers and wrapping earn no new token-swap XP. Each unique trade earns one XP; five trades earn five XP, twenty earn twenty XP. Receipt hashes appear immediately, are recoverable locally while pending, and are saved after verification.
 
 `/dashboard` includes hash verification, copy buttons, input/output amounts, block, confirmations, and Robinhood testnet explorer links. Existing wallet awards, mainnet swap XP and earlier wrap-demo XP are retained; actual testnet token swaps have their own count and evidence marker. The current verifier accepts pool trades only. Generic transaction proof and swap proof can share the same receipt without losing XP. No database migration is required. Testnet receipts establish testnet activity; they do not establish mainnet $WIF activity for hackathon eligibility.
+
+## WIF onboarding loop and Test LOX sends
+
+The public journey is **connect → faucet → verified testnet action → XP → ecosystem discovery → invite → return**. Weekly rotations alternate between the `/swap` and `/send` quests. A streak records consecutive UTC weeks with at least one verified Robinhood testnet transaction. XP levels are Newcomer, Explorer, Builder and WIF Guide; badges unlock from server-derived progress.
+
+`/send` is a second quest with visible product value. It sends Test LOX directly to another wallet, waits for two confirmations, then verifies the authenticated sender, Test LOX contract, exact ERC-20 calldata, recipient, amount, Transfer event and canonical block inclusion. Each unique verified send earns two XP. The wallet can add Test LOX to its token list after FlatQuest switches to Robinhood Chain testnet.
+
+Invite links use `/?ref=<wallet>`. A referral counts once, only after the invited wallet completes signed FlatQuest authentication, and earns the inviter ten XP. No browser-supplied completion flag is trusted. Public `/passport/<wallet>` pages show the wallet's verified testnet proof trail, XP, level, streak, successful referrals, completed ecosystem quests and unlockable badges.
+
+$WIF remains the identity, community and progression layer. The faucet demo uses Test ETH and Test LOX only; Test LOX is not represented as official testnet $WIF.
 
 ## Architecture
 
@@ -60,8 +72,9 @@ The application uses server-side database access. Database credentials are not e
 2. Switch to Robinhood Chain testnet.
 3. Get faucet Test ETH from the official testnet faucet.
 4. Complete a verified Test ETH ↔ Test LOX swap to earn XP.
-5. Explore ecosystem resources and build a public WIF Passport.
-6. Optionally join Pass WIF Forward on mainnet or invite another wallet to the journey.
+5. Send Test LOX to another testnet wallet and verify the Transfer event.
+6. Explore the ecosystem, protect a weekly streak, share a public WIF Passport and invite another wallet.
+7. Optionally join Pass WIF Forward on mainnet.
 
 The explore quest is clearly labeled as self-reported. It is not represented as independently verified onchain activity.
 
