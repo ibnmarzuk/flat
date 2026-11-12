@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useWalletSession } from "./wallet-session";
 import { selectWalletNetwork } from "@/lib/wallet-network";
+import WalletMenu from "./wallet-menu";
 
 const CHAIN_ID = "0xb626"; // Robinhood Chain testnet, 46630
 const RPC = "https://rpc.testnet.chain.robinhood.com";
@@ -197,7 +198,7 @@ export default function Home() {
     <nav className="nav shell">
       <a className="wordmark" href="#"><Mark/><span>flat<span className="wordmark-light">quest</span></span></a>
       <div className="nav-links"><a href="#how-it-works">How it works</a><a href="#quests">Quests</a><a href="#about">Why FlatQuest</a><Link href="/dashboard" prefetch={false}>My dashboard ↗</Link></div>
-      <button className="connect-button" onClick={connect} disabled={checkingSession || connecting || retrySeconds > 0} aria-busy={checkingSession || connecting}>{checkingSession ? "Checking wallet…" : retrySeconds > 0 ? `Retry in ${Math.floor(retrySeconds / 60)}:${String(retrySeconds % 60).padStart(2, "0")}` : connecting ? "Connecting..." : account ? (wallet ? account.slice(0, 6) + "..." + account.slice(-4) : "Verify wallet") : "Connect wallet"} <span>{connecting ? "…" : "↗"}</span></button>
+      <WalletMenu/>
     </nav>
 
     <nav className="mobile-navigation shell" aria-label="Quick navigation"><a href="#quests">Quests</a><Link href="/dashboard" prefetch={false}>My dashboard ↗</Link></nav>
@@ -205,7 +206,7 @@ export default function Home() {
       <div className="hero-copy">
         <div className="eyebrow"><span className="live-dot"/> YOUR ONCHAIN JOURNEY STARTS HERE</div>
         <h1>Make your first<br/>move <em>count.</em></h1>
-        <p className="hero-lede">A clearer way into the World Is Flat ecosystem. Discover useful quests, take meaningful action, and prove every milestone.</p>
+        <p className="hero-lede">A faucet-funded onboarding journey into the World Is Flat ecosystem. Complete real testnet actions, earn XP, grow your level and share a proof-backed WIF Passport.</p>
         <div className="hero-actions"><a className="primary-button" href="#quests">Explore quests <span>↗</span></a><a className="text-link" href="#how-it-works">See how it works <span>↓</span></a></div>
         <div className="hero-proof"><div className="avatar-stack"><span>F</span><span>Q</span><span>↗</span></div><span>Small steps. Verifiable progress.</span></div>
       </div>
@@ -226,14 +227,24 @@ export default function Home() {
       <Link href="/swap" className="primary-button">Open swap quest <span>↗</span></Link>
     </aside>
 
+    <aside className="token-send-entry shell" aria-label="Testnet token send quest">
+      <div><span className="eyebrow">TOKEN COURIER · VERIFIED TESTNET QUEST</span><h2>Make the second move matter.</h2>
+        <p>Send Test LOX to another wallet, verify the Transfer event, and add the receipt to your public WIF Passport.</p></div>
+      <Link href="/send" className="primary-button">Open send quest <span>↗</span></Link>
+    </aside>
+
     <section className="judge-entry shell" aria-labelledby="judge-entry-title">
       <div>
         <span className="eyebrow">JUDGE QUICK START · NO MAINNET FUNDS REQUIRED</span>
         <h2 id="judge-entry-title">See the full loop in minutes.</h2>
-        <p>Use faucet Test ETH on Robinhood Chain testnet, swap it for Test LOX, and let FlatQuest verify the receipt before awarding XP.</p>
+        <p>Connect, claim faucet Test ETH, complete a verified testnet action, earn XP, then share your Passport or invite the next explorer.</p>
       </div>
-      <div className="judge-steps" aria-label="Judge demo steps"><span><strong>01</strong> Connect</span><span><strong>02</strong> Swap</span><span><strong>03</strong> Verify</span><Link href="/swap" className="primary-button">Start judge demo <span>↗</span></Link></div>
+      <div className="judge-steps" aria-label="Judge demo steps"><span><strong>01</strong> Connect</span><span><strong>02</strong> Faucet</span><span><strong>03</strong> Act</span><span><strong>04</strong> Earn XP</span><span><strong>05</strong> Passport</span><Link href="/swap" className="primary-button">Start judge demo <span>↗</span></Link></div>
     </section>
+
+    <section className="journey-loop shell" aria-labelledby="journey-loop-title"><div className="section-heading"><div><div className="eyebrow">THE WIF ONBOARDING LOOP</div><h2 id="journey-loop-title">Come for a quest.<br/><em>Return with momentum.</em></h2></div><p>$WIF is the identity and community layer; judges use only faucet Test ETH and clearly labelled test tokens for the demo.</p></div><div className="loop-grid">
+      {[['01','Connect','Verify wallet ownership.'],['02','Fund','Claim free faucet Test ETH.'],['03','Act','Swap or send a test token.'],['04','Grow','Earn XP, levels and badges.'],['05','Discover','Follow the weekly ecosystem rotation.'],['06','Return','Invite a wallet and protect your streak.']].map(([number,title,copy]) => <article key={number}><span>{number}</span><h3>{title}</h3><p>{copy}</p></article>)}
+    </div></section>
 
     <section className="stats shell"><div><strong>01</strong><span>Discover your next step</span></div><div><strong>02</strong><span>Complete a useful action</span></div><div><strong>03</strong><span>Keep proof of your progress</span></div></section>
 

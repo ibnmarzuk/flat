@@ -8,8 +8,10 @@ import WalletGate from "./wallet-gate";
 import XpPanel from "./xp-panel";
 import SwapProofs from "./swap-proofs";
 import { TRADE_QUEST_SLUG } from "@/lib/testnet-trade";
-import { getTestnetSwapHistory, getXpDashboard } from "@/lib/xp-progress";
+import { getJourneyProfile, getTestnetSwapHistory, getXpDashboard } from "@/lib/xp-progress";
 import { getAuthenticatedWallet, SESSION_COOKIE } from "@/lib/auth";
+import WalletMenu from "@/app/wallet-menu";
+import InvitePanel from "./invite-panel";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -61,8 +63,9 @@ export default async function DashboardPage() {
     where c.wallet_address = ${wallet} and q.slug not in (${WIF_QUEST_SLUG}, ${WIF_SWAP_QUEST_SLUG}, ${TESTNET_SWAP_QUEST_SLUG}, ${TRADE_QUEST_SLUG})
     order by coalesce(c.verified_at, c.submitted_at, c.updated_at) desc
   `;
-  const [xp, swapProofs] = await Promise.all([
+  const [xp, journey, swapProofs] = await Promise.all([
     getXpDashboard(wallet).catch(() => null),
+    getJourneyProfile(wallet).catch(() => null),
     getTestnetSwapHistory(wallet).catch(() => null)
   ]);
   const starterPath = [
@@ -83,10 +86,12 @@ export default async function DashboardPage() {
 
   return <WalletGate address={wallet}><main className="dashboard-page">
     <div className="dashboard-shell">
-      <nav className="dashboard-nav"><Link href="/" className="wordmark"><span className="brand-mark small"><svg viewBox="0 0 64 64" fill="none"><path d="M14 43.5C19.2 43.5 20.3 32 29 32C36.2 32 36.4 20.5 49 20.5" stroke="currentColor" strokeWidth="4.2" strokeLinecap="round"/><circle cx="14" cy="43.5" r="5" fill="currentColor"/><circle cx="29" cy="32" r="5" fill="currentColor" stroke="#C7F36B" strokeWidth="2"/><path d="m42 20.5 5.2 5.2 8.3-10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/></svg></span><span>flat<span className="wordmark-light">quest</span></span></Link><Link href="/#quests" className="dashboard-back">Explore quests ↗</Link></nav>
-      <div className="dashboard-header"><div><span className="dashboard-kicker">YOUR ONCHAIN JOURNEY</span><h1>Your progress.<br/><em>Backed by proof.</em></h1><p>One place for your FlatQuest milestones and verifiable activity.</p></div><div className="dashboard-wallet"><small>CONNECTED WALLET</small><strong>{shortWallet(wallet)}</strong><a href={"https://explorer.testnet.chain.robinhood.com/address/" + wallet} target="_blank" rel="noreferrer">View on explorer ↗</a></div></div>
+      <nav className="dashboard-nav"><Link href="/" className="wordmark"><span className="brand-mark small"><svg viewBox="0 0 64 64" fill="none"><path d="M14 43.5C19.2 43.5 20.3 32 29 32C36.2 32 36.4 20.5 49 20.5" stroke="currentColor" strokeWidth="4.2" strokeLinecap="round"/><circle cx="14" cy="43.5" r="5" fill="currentColor"/><circle cx="29" cy="32" r="5" fill="currentColor" stroke="#C7F36B" strokeWidth="2"/><path d="m42 20.5 5.2 5.2 8.3-10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/></svg></span><span>flat<span className="wordmark-light">quest</span></span></Link><div className="dashboard-nav-actions"><Link href="/#quests" className="dashboard-back">Explore quests ↗</Link><WalletMenu compact/></div></nav>
+      <div className="dashboard-header"><div><span className="dashboard-kicker">YOUR WIF ONBOARDING JOURNEY</span><h1>Your progress.<br/><em>Backed by proof.</em></h1><p>Complete faucet-funded actions, grow your level, protect your streak and share a public WIF Passport.</p></div><div className="dashboard-wallet"><small>WIF PASSPORT</small><strong>{shortWallet(wallet)}</strong><Link href={`/passport/${wallet}`}>Open public Passport ↗</Link><a href={"https://explorer.testnet.chain.robinhood.com/address/" + wallet} target="_blank" rel="noreferrer">View on explorer ↗</a></div></div>
       <section className="dashboard-stats"><article><small>VERIFIED MILESTONES</small><strong>{verified}</strong><span>Wallet, network and transaction checks</span></article><article><small>SELF REPORTED</small><strong>{submitted}</strong><span>Learning activity recorded</span></article><article><small>QUESTS AVAILABLE</small><strong>{total}</strong><span>In the current starter path</span></article></section>
-      <XpPanel xp={xp} wallet={wallet} />
+      <XpPanel xp={xp} wallet={wallet} journey={journey ? { streak: journey.streak, rotation: journey.rotation,
+        weeklyComplete: journey.weeklyComplete, badges: journey.badges } : null} />
+      <InvitePanel wallet={wallet} count={journey?.progress.referralCount ?? xp?.progress.referralCount ?? 0} />
       <SwapProofs key={wallet} address={wallet} proofs={swapProofs} />
       <section className="dashboard-progress"><div className="dashboard-section-head"><div><span className="dashboard-kicker">YOUR JOURNEY</span><h2>Keep moving forward</h2></div><strong>{progress}%</strong></div><div className="dashboard-track"><span style={{width: progress + "%"}}/></div><p>{recorded} of {total} starter milestones recorded · {verified} verified · {submitted} self reported.</p></section>
       <section className="dashboard-history"><div className="dashboard-section-head"><div><span className="dashboard-kicker">ACTIVITY HISTORY</span><h2>Your milestones</h2></div><span>{rows.length} recorded</span></div>
